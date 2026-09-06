@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+
+:root {
+  font-family: 'Noto Sans TC', system-ui, sans-serif;
+  color: #171713;
+  background: #f2eee5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ink: #171713;
+  --paper: #f2eee5;
+  --card: #fffdf8;
+  --acid: #d7ef62;
+  --coral: #ff786a;
+  --blue: #7eb8ca;
+  --muted: #777267;
+  --line: rgba(23, 23, 19, 0.2);
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; scroll-behavior: smooth; }
+body { min-width: 320px; min-height: 100vh; margin: 0; }
+body::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(rgba(23,23,19,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23,23,19,.018) 1px, transparent 1px),
+    var(--paper);
+  background-size: 4px 4px;
+  content: '';
+}
+button, input, textarea, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 3px solid rgba(126,184,202,.65);
+  outline-offset: 2px;
+}
