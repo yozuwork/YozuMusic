@@ -7,7 +7,7 @@ function PlatformIcon({ platform }) {
   return <FiExternalLink aria-hidden="true" />
 }
 
-export default function SongCard({ song, onEdit, onDelete, onToggleFavorite, onPlay }) {
+export default function SongCard({ song, tagLabels, onEdit, onDelete, onToggleFavorite, onPlay }) {
   return (
     <article className="song-card">
       <button className="cover-button" type="button" onClick={() => onPlay(song)} aria-label={`播放 ${song.title}`}>
@@ -40,7 +40,7 @@ export default function SongCard({ song, onEdit, onDelete, onToggleFavorite, onP
         </div>
 
         <div className="song-tags">
-          {song.tags.slice(0, 3).map((tag) => <span key={tag}>#{tag}</span>)}
+          {song.tags.filter((tag) => tagLabels[tag]).slice(0, 3).map((tag) => <span key={tag}>#{tagLabels[tag]}</span>)}
         </div>
 
         <div className="category-dots" aria-label={`分類：${song.categories.join('、')}`}>

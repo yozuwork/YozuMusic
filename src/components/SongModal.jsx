@@ -22,23 +22,27 @@ function ToggleGroup({ label, options, values, onChange, required }) {
     <fieldset className="toggle-fieldset">
       <legend>{label} {required && <span>*</span>}</legend>
       <div>
-        {options.map((option) => (
+        {options.map((option) => {
+          const value = typeof option === 'string' ? option : option.id
+          const text = typeof option === 'string' ? option : option.label
+          return (
           <button
             type="button"
-            key={option}
-            className={values.includes(option) ? 'choice-chip selected' : 'choice-chip'}
-            onClick={() => toggle(option)}
+            key={value}
+            className={values.includes(value) ? 'choice-chip selected' : 'choice-chip'}
+            onClick={() => toggle(value)}
           >
-            {values.includes(option) && <FiCheck aria-hidden="true" />}
-            {option}
+            {values.includes(value) && <FiCheck aria-hidden="true" />}
+            {text}
           </button>
-        ))}
+          )
+        })}
       </div>
     </fieldset>
   )
 }
 
-export default function SongModal({ open, song, onClose, onSave }) {
+export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, onSave }) {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
 
@@ -143,7 +147,7 @@ export default function SongModal({ open, song, onClose, onSave }) {
           </div>
 
           <ToggleGroup label="主分類" required options={MAIN_CATEGORIES} values={form.categories} onChange={(categories) => setForm((current) => ({ ...current, categories }))} />
-          <ToggleGroup label="歌曲感覺" options={MOOD_TAGS} values={form.tags} onChange={(tags) => setForm((current) => ({ ...current, tags }))} />
+          <ToggleGroup label="歌曲感覺" options={moodTags} values={form.tags} onChange={(tags) => setForm((current) => ({ ...current, tags }))} />
 
           <div className="form-field full-width">
             <label htmlFor="song-note">收藏備註</label>

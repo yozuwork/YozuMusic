@@ -24,6 +24,7 @@ export default function CategoryTabs({ categories, active, songs, onChange }) {
             type="button"
             key={category}
             className={active === category ? 'category-tab active' : 'category-tab'}
+            aria-current={active === category ? 'page' : undefined}
             onClick={() => onChange(category)}
           >
             <Icon aria-hidden="true" />

@@ -9,7 +9,9 @@
   --ink: #171713;
   --paper: #f2eee5;
   --card: #fffdf8;
-  --acid: #d7ef62;
+  --accent: #d7ef62;
+  --accent-soft: rgba(215,239,98,.55);
+  --accent-shadow: rgba(215,239,98,.85);
   --coral: #ff786a;
   --blue: #7eb8ca;
   --muted: #777267;
@@ -17,8 +19,9 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; scroll-behavior: smooth; }
-body { min-width: 320px; min-height: 100vh; margin: 0; }
+html { width: 100%; min-width: 320px; max-width: 100%; overflow-x: hidden; scroll-behavior: smooth; }
+body { width: 100%; min-width: 320px; max-width: 100%; min-height: 100vh; margin: 0; overflow-x: hidden; }
+#root { width: 100%; max-width: 100%; overflow-x: clip; }
 body::before {
   position: fixed;
   z-index: -1;
