@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FiCheck, FiClipboard, FiEdit3, FiImage, FiLink, FiPlus, FiX } from 'react-icons/fi'
-import { MAIN_CATEGORIES, MOOD_TAGS } from '../data/initialSongs.js'
-import { getAutoCover, getLinkMetadata, getPlatform, isWebUrl } from '../utils/songLinks.js'
+import { FiCheck, FiClipboard, FiEdit3, FiExternalLink, FiImage, FiLink, FiPlus, FiX } from 'react-icons/fi'
+import { MOOD_TAGS, SONG_CATEGORIES } from '../data/initialSongs.js'
+import { getAutoCover, getBilibiliVideoKey, getLinkMetadata, getPlatform, isWebUrl, parseMusicShareText } from '../utils/songLinks.js'
 import { compressCoverImage } from '../utils/compressCoverImage.js'
 
 const emptyForm = {
@@ -12,6 +12,8 @@ const emptyForm = {
   categories: [],
   tags: [],
   note: '',
+  workId: '',
+  workTitle: '',
 }
 
 function ToggleGroup({ label, options, values, onChange, required }) {
@@ -43,7 +45,7 @@ function ToggleGroup({ label, options, values, onChange, required }) {
   )
 }
 
-export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, onSave }) {
+export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS, onClose, onSave }) {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [metadataStatus, setMetadataStatus] = useState('idle')
@@ -73,6 +75,8 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
       categories: Array.isArray(song.categories) ? song.categories : [],
       tags: Array.isArray(song.tags) ? song.tags : [],
       note: song.note,
+      workId: song.workId || '',
+      workTitle: song.workTitle || works.find((work) => work.id === song.workId)?.title || '',
     } : emptyForm)
     setError('')
     setMetadataStatus('idle')
@@ -81,8 +85,9 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
   useEffect(() => {
     const url = form.url.trim()
     const platform = getPlatform(url)
-    if (!open || song || !['YouTube', 'Bilibili'].includes(platform) || !isWebUrl(url)) {
-      setMetadataStatus('idle')
+    const supportsMetadata = platform === 'YouTube' || (platform === 'Bilibili' && getBilibiliVideoKey(url))
+    if (!open || song || !supportsMetadata || !isWebUrl(url)) {
+      setMetadataStatus((current) => current === 'shared' ? current : 'idle')
       return undefined
     }
 
@@ -158,7 +163,28 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
 
   function updateField(event) {
     const { name, value } = event.target
+    if (name === 'url') setMetadataStatus('idle')
     setForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function applySharedText(value) {
+    const shared = parseMusicShareText(value)
+    if (!shared.url) return false
+
+    setForm((current) => ({
+      ...current,
+      url: shared.url,
+      title: shared.title || current.title,
+    }))
+    setMetadataStatus(shared.title ? 'shared' : 'idle')
+    setError('')
+    return true
+  }
+
+  function handleLinkPaste(event) {
+    const value = event.clipboardData?.getData('text') ?? ''
+    if (!applySharedText(value)) return
+    event.preventDefault()
   }
 
   async function handleFileChange(event) {
@@ -171,7 +197,9 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
   async function pasteLink() {
     try {
       const value = (await navigator.clipboard.readText()).trim()
-      if (value) setForm((current) => ({ ...current, url: value }))
+      if (value && !applySharedText(value)) {
+        setError('剪貼簿中找不到有效的 http 或 https 音樂連結。')
+      }
     } catch {
       setError('無法讀取剪貼簿，請直接在欄位貼上連結。')
     }
@@ -199,6 +227,8 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
       artist: form.artist.trim(),
       coverUrl: form.coverUrl.trim() || getAutoCover(form.url),
       note: form.note.trim(),
+      workId: form.workId,
+      workTitle: form.workTitle.trim(),
       platform: getPlatform(form.url),
       favorite: song?.favorite ?? false,
     })
@@ -212,11 +242,11 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
         <button className="modal-close" type="button" aria-label="關閉" onClick={onClose}><FiX /></button>
         <div
           className="modal-preview"
-          style={previewCover ? { backgroundImage: `linear-gradient(90deg, rgba(18,18,18,.74), rgba(18,18,18,.15)), url("${previewCover.replace(/"/g, '\\"')}")` } : undefined}
           tabIndex="0"
           onFocus={() => setIsCoverFocused(true)}
           onBlur={() => setIsCoverFocused(false)}
         >
+          {previewCover && <img className="modal-preview-cover" src={previewCover} alt="" referrerPolicy="no-referrer" />}
           <span>{song ? <FiEdit3 /> : <FiPlus />} MUSIC CLIPPING</span>
           <h2 id="song-modal-title">{song ? '編輯這張聲音卡片' : '貼上一段喜歡的聲音'}</h2>
           <p>一筆收藏可放進多個分區，不需要重複新增。</p>
@@ -244,18 +274,24 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
             <label htmlFor="song-url">音樂連結 <span>*</span></label>
             <div className="url-input-wrap">
               <FiLink aria-hidden="true" />
-              <input id="song-url" name="url" type="url" value={form.url} placeholder="貼上 YouTube、Spotify 或其他音樂連結…" onChange={updateField} autoFocus />
+              <input id="song-url" name="url" type="url" value={form.url} placeholder="貼上 YouTube、Spotify、Bilibili 或其他音樂連結…" onChange={updateField} onPaste={handleLinkPaste} autoFocus />
               <button type="button" onClick={pasteLink}><FiClipboard /> 貼上</button>
             </div>
-            {form.url && (
-              <small>
-                辨識為 {getPlatform(form.url)}
-                {getAutoCover(form.url) ? '・已自動抓取 YouTube 封面' : ''}
-                {metadataStatus === 'loading' && '・正在讀取標題…'}
-                {metadataStatus === 'success' && (getPlatform(form.url) === 'Bilibili' ? '・已自動填入封面、標題與來源' : '・已自動填入標題與來源')}
-                {metadataStatus === 'error' && '・無法取得標題，請手動輸入'}
-              </small>
-            )}
+            <div className="link-meta-row">
+              {form.url && (
+                <small>
+                  辨識為 {getPlatform(form.url)}
+                  {getAutoCover(form.url) ? '・已自動抓取 YouTube 封面' : ''}
+                  {metadataStatus === 'shared' && '・已從分享文字填入歌曲名稱'}
+                  {metadataStatus === 'loading' && '・正在讀取標題…'}
+                  {metadataStatus === 'success' && (getPlatform(form.url) === 'Bilibili' ? '・已自動填入封面、標題與來源' : '・已自動填入標題與來源')}
+                  {metadataStatus === 'error' && '・無法取得標題，請手動輸入'}
+                </small>
+              )}
+              <a className="bilibili-cover-link" href="https://bilibilia.com/" target="_blank" rel="noopener noreferrer">
+                抓取B站封面 <FiExternalLink aria-hidden="true" />
+              </a>
+            </div>
           </div>
 
           <div className="form-field">
@@ -267,11 +303,27 @@ export default function SongModal({ open, song, moodTags = MOOD_TAGS, onClose, o
             <input id="song-artist" name="artist" value={form.artist} placeholder="例如：生物股長" onChange={updateField} />
           </div>
           <div className="form-field full-width">
+            <label htmlFor="song-work">關聯作品</label>
+            <select
+              id="song-work"
+              value={form.workId}
+              onChange={(event) => {
+                const workId = event.target.value
+                const matchedWork = works.find((work) => work.id === workId)
+                setForm((current) => ({ ...current, workId, workTitle: matchedWork?.title || '' }))
+              }}
+            >
+              <option value="">不關聯作品</option>
+              {works.map((work) => <option key={work.id} value={work.id}>{work.title}（{work.type}）</option>)}
+            </select>
+            <small>請先在「作品」區建立作品，再將歌曲關聯到對應作品。</small>
+          </div>
+          <div className="form-field full-width">
             <label htmlFor="song-cover">自訂封面網址</label>
             <input id="song-cover" name="coverUrl" type="url" value={form.coverUrl} placeholder="選填；也可用上方按鈕上傳或直接貼上圖片" onChange={updateField} />
           </div>
 
-          <ToggleGroup label="主分類" required options={MAIN_CATEGORIES} values={form.categories} onChange={(categories) => setForm((current) => ({ ...current, categories }))} />
+          <ToggleGroup label="主分類" required options={SONG_CATEGORIES} values={form.categories} onChange={(categories) => setForm((current) => ({ ...current, categories }))} />
           <ToggleGroup label="歌曲感覺" options={moodTags} values={form.tags} onChange={(tags) => setForm((current) => ({ ...current, tags }))} />
 
           <div className="form-field full-width">

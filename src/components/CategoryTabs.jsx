@@ -1,15 +1,14 @@
-import { FiGrid, FiHeadphones, FiMusic, FiPenTool, FiPlayCircle, FiZap } from 'react-icons/fi'
+import { FiBookOpen, FiGrid, FiHeadphones, FiMusic, FiPenTool } from 'react-icons/fi'
 
 const icons = {
   all: FiGrid,
   BGM: FiHeadphones,
   MUSIC: FiMusic,
-  動漫: FiPlayCircle,
-  遊戲: FiZap,
   作業用: FiPenTool,
+  作品: FiBookOpen,
 }
 
-export default function CategoryTabs({ categories, active, songs, onChange }) {
+export default function CategoryTabs({ categories, active, songs, workCount = 0, onChange }) {
   const items = ['all', ...categories]
 
   return (
@@ -18,7 +17,9 @@ export default function CategoryTabs({ categories, active, songs, onChange }) {
         const Icon = icons[category]
         const count = category === 'all'
           ? songs.length
-          : songs.filter((song) => (song.categories || []).includes(category)).length
+          : category === '作品'
+            ? workCount
+            : songs.filter((song) => (song.categories || []).includes(category)).length
         return (
           <button
             type="button"

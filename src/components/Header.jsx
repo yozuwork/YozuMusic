@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FiHeadphones, FiLogOut, FiPlus, FiSearch } from 'react-icons/fi'
 import CategoryTabs from './CategoryTabs.jsx'
 
-export default function Header({ user, onLogout, search, onSearchChange, onAdd, theme, onThemeChange, categories, activeCategory, songs, onCategoryChange }) {
+export default function Header({ user, onLogout, search, onSearchChange, onAdd, addLabel = '貼上音樂', theme, onThemeChange, categories, activeCategory, songs, workCount, onCategoryChange }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const accountRef = useRef(null)
 
@@ -45,11 +45,11 @@ export default function Header({ user, onLogout, search, onSearchChange, onAdd, 
         <a className="brand-name" href="#top" aria-label="柚子音樂庫首頁">柚子音樂庫</a>
       </div>
 
-      <CategoryTabs categories={categories} active={activeCategory} songs={songs} onChange={onCategoryChange} />
+      <CategoryTabs categories={categories} active={activeCategory} songs={songs} workCount={workCount} onChange={onCategoryChange} />
 
       <button className="header-add-button" type="button" onClick={onAdd}>
         <FiPlus aria-hidden="true" />
-        貼上音樂
+        {addLabel}
       </button>
 
       <div className="theme-switcher" aria-label="切換主色">

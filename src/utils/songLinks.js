@@ -27,10 +27,43 @@ export function getBilibiliVideoKey(url) {
   return null
 }
 
+function getBracketedShareTitle(value) {
+  const start = value.indexOf('【')
+  if (start === -1) return ''
+
+  let depth = 0
+  for (let index = start; index < value.length; index += 1) {
+    if (value[index] === '【') depth += 1
+    if (value[index] !== '】') continue
+
+    depth -= 1
+    if (depth === 0) {
+      return value
+        .slice(start + 1, index)
+        .trim()
+        .replace(/\s*[-_—–|]哔哩哔哩\s*$/i, '')
+        .trim()
+    }
+  }
+
+  return ''
+}
+
+export function parseMusicShareText(value) {
+  const text = String(value ?? '').trim()
+  const rawUrl = text.match(/https?:\/\/[^\s<>()\[\]]+/i)?.[0] ?? ''
+  const url = rawUrl.replace(/[.,;:!?，。；：！？]+$/u, '')
+
+  return {
+    url: isWebUrl(url) ? url : '',
+    title: getBracketedShareTitle(text),
+  }
+}
+
 export function getPlatform(url) {
   const value = url.toLowerCase()
   if (value.includes('youtu')) return 'YouTube'
-  if (value.includes('bilibili.com')) return 'Bilibili'
+  if (value.includes('bilibili.com') || value.includes('b23.tv')) return 'Bilibili'
   if (value.includes('spotify')) return 'Spotify'
   if (value.includes('soundcloud')) return 'SoundCloud'
   if (value.includes('music.apple')) return 'Apple Music'

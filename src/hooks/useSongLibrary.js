@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { get, onValue, ref, set, update } from 'firebase/database'
-import { INITIAL_SONGS } from '../data/initialSongs.js'
+import { INITIAL_SONGS, SONG_CATEGORIES } from '../data/initialSongs.js'
 import { database, firebaseReady } from '../lib/firebase.js'
 
 const STORAGE_KEY = 'yozu-music-library-v1'
@@ -16,8 +16,10 @@ function normalizeSong(song, fallbackId = '') {
     url: typeof song.url === 'string' ? song.url : '',
     coverUrl: typeof song.coverUrl === 'string' ? song.coverUrl : '',
     note: typeof song.note === 'string' ? song.note : '',
-    categories: Array.isArray(song.categories) ? song.categories : [],
+    categories: Array.isArray(song.categories) ? song.categories.filter((category) => SONG_CATEGORIES.includes(category)) : [],
     tags: Array.isArray(song.tags) ? song.tags : [],
+    workId: typeof song.workId === 'string' ? song.workId : '',
+    workTitle: typeof song.workTitle === 'string' ? song.workTitle : '',
   }
   return normalized.id && normalized.title && normalized.url ? normalized : null
 }

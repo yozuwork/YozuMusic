@@ -1,4 +1,5 @@
-export const MAIN_CATEGORIES = ['BGM', 'MUSIC', '動漫', '遊戲', '作業用']
+export const SONG_CATEGORIES = ['BGM', 'MUSIC', '作業用']
+export const MAIN_CATEGORIES = [...SONG_CATEGORIES, '作品']
 export const MOOD_TAGS = ['CHILL', '戰鬥', '青春', '熱血', '懷舊', '療癒', '夜晚', '專注']
 
 export const INITIAL_SONGS = [
@@ -8,7 +9,9 @@ export const INITIAL_SONGS = [
     artist: 'Joe Hisaishi',
     url: 'https://www.youtube.com/watch?v=pR4iCWB-VVQ',
     coverUrl: 'https://i.ytimg.com/vi/pR4iCWB-VVQ/hqdefault.jpg',
-    categories: ['BGM', '動漫', '作業用'],
+    categories: ['BGM', '作業用'],
+    workTitle: '魔女宅急便',
+    workType: '動漫',
     tags: ['CHILL', '療癒', '懷舊'],
     note: '午後工作時適合循環播放。',
     platform: 'YouTube',
@@ -21,7 +24,9 @@ export const INITIAL_SONGS = [
     artist: 'Persona 5 OST',
     url: 'https://www.youtube.com/watch?v=gFFOXwniVKw',
     coverUrl: 'https://i.ytimg.com/vi/gFFOXwniVKw/hqdefault.jpg',
-    categories: ['BGM', '遊戲', '作業用'],
+    categories: ['BGM', '作業用'],
+    workTitle: 'Persona 5',
+    workType: '遊戲',
     tags: ['CHILL', '夜晚', '專注'],
     note: '深夜咖啡廳感。',
     platform: 'YouTube',
@@ -34,7 +39,9 @@ export const INITIAL_SONGS = [
     artist: 'JAM Project',
     url: 'https://www.youtube.com/watch?v=QImBolnTVH8',
     coverUrl: 'https://i.ytimg.com/vi/QImBolnTVH8/hqdefault.jpg',
-    categories: ['MUSIC', '動漫'],
+    categories: ['MUSIC'],
+    workTitle: '一拳超人',
+    workType: '動漫',
     tags: ['戰鬥', '熱血'],
     note: '需要提振精神的時候。',
     platform: 'YouTube',
@@ -47,7 +54,9 @@ export const INITIAL_SONGS = [
     artist: 'Kingdom Hearts OST',
     url: 'https://www.youtube.com/watch?v=Jk4P10nsq4c',
     coverUrl: 'https://i.ytimg.com/vi/Jk4P10nsq4c/hqdefault.jpg',
-    categories: ['BGM', '遊戲'],
+    categories: ['BGM'],
+    workTitle: 'Kingdom Hearts',
+    workType: '遊戲',
     tags: ['療癒', '懷舊', '夜晚'],
     note: '安靜又帶一點回憶感。',
     platform: 'YouTube',
@@ -60,7 +69,9 @@ export const INITIAL_SONGS = [
     artist: 'Ikimonogakari',
     url: 'https://www.youtube.com/watch?v=KpsJWFuVTdI',
     coverUrl: 'https://i.ytimg.com/vi/KpsJWFuVTdI/hqdefault.jpg',
-    categories: ['MUSIC', '動漫'],
+    categories: ['MUSIC'],
+    workTitle: '火影忍者',
+    workType: '動漫',
     tags: ['青春', '熱血', '懷舊'],
     note: '前奏一響就回到那個夏天。',
     platform: 'YouTube',

@@ -21,7 +21,8 @@ npm run deploy
 
 - 以連結新增 YouTube、Spotify、SoundCloud、Apple Music 或其他音樂來源
 - YouTube 連結自動產生封面
-- 單一歌曲資料可同時加入 BGM、MUSIC、動漫、遊戲、作業用等多個主分類
+- 單一歌曲資料可同時加入 BGM、MUSIC、作業用等多個主分類
+- 動漫與遊戲合併為獨立的「作品」區，歌曲可關聯到對應作品
 - CHILL、戰鬥、青春、熱血、懷舊、療癒、夜晚、專注等感覺標籤
 - 搜尋、分類／標籤篩選、排序、最愛、編輯與刪除
 - 桌機及手機響應式版面
@@ -29,4 +30,4 @@ npm run deploy
 
 ## 資料說明
 
-歌曲統一存放於同一個陣列，每首歌曲的 `categories` 與 `tags` 都是陣列，因此同一首歌能同時出現在多個分區。第一版資料儲存在瀏覽器；未來可將 `useSongLibrary` 換成 Firestore 實作，畫面與資料格式不需改寫。
+歌曲的 `categories` 與 `tags` 都是陣列，因此同一首歌能同時出現在多個分區。作品獨立儲存，歌曲透過 `workId` 與 `workTitle` 關聯作品。

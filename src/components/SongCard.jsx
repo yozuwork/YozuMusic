@@ -1,4 +1,4 @@
-import { FiCheck, FiEdit3, FiExternalLink, FiHeart, FiMoreHorizontal, FiPlay, FiTrash2 } from 'react-icons/fi'
+import { FiBookOpen, FiCheck, FiEdit3, FiExternalLink, FiHeart, FiMoreHorizontal, FiPlay, FiTrash2 } from 'react-icons/fi'
 import { SiBilibili, SiSpotify, SiYoutube } from 'react-icons/si'
 
 function PlatformIcon({ platform }) {
@@ -8,7 +8,7 @@ function PlatformIcon({ platform }) {
   return <FiExternalLink aria-hidden="true" />
 }
 
-export default function SongCard({ song, tagLabels, onEdit, onDelete, onToggleFavorite, onPlay, selectionMode = false, selected = false, onToggleSelect }) {
+export default function SongCard({ song, work, tagLabels, onEdit, onDelete, onToggleFavorite, onPlay, onOpenWork, selectionMode = false, selected = false, onToggleSelect }) {
   const songTags = Array.isArray(song.tags) ? song.tags : []
   const songCategories = Array.isArray(song.categories) ? song.categories : []
 
@@ -74,6 +74,12 @@ export default function SongCard({ song, tagLabels, onEdit, onDelete, onToggleFa
         <div className="song-tags">
           {songTags.filter((tag) => tagLabels[tag]).slice(0, 3).map((tag) => <span key={tag}>#{tagLabels[tag]}</span>)}
         </div>
+
+        {(work || song.workTitle) && (
+          <button className="song-work-link" type="button" onClick={() => onOpenWork(work?.id || song.workId)}>
+            <FiBookOpen aria-hidden="true" /> {work?.title || song.workTitle}
+          </button>
+        )}
 
         <div className="category-dots" aria-label={`分類：${songCategories.join('、')}`}>
           {songCategories.map((category) => <span key={category}>{category}</span>)}
