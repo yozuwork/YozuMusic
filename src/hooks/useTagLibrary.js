@@ -26,15 +26,12 @@ function readTags() {
 
 export default function useTagLibrary(allowRemote = false) {
   const [tagsBySection, setTagsBySection] = useState(readTags)
-  const [remoteEnabled, setRemoteEnabled] = useState(false)
 
   useEffect(() => {
     if (!firebaseReady || !allowRemote) {
-      setRemoteEnabled(false)
       return undefined
     }
 
-    setRemoteEnabled(true)
     const tagsRef = ref(database, DATABASE_PATH)
     return onValue(tagsRef, (snapshot) => {
       if (!snapshot.exists()) {
@@ -48,13 +45,12 @@ export default function useTagLibrary(allowRemote = false) {
       setTagsBySection(nextTags)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTags))
     }, (error) => {
-      console.error('無法讀取 Firebase 標籤資料，已切換成本機儲存：', error)
-      setRemoteEnabled(false)
+      console.error('無法讀取 Firebase 標籤資料：', error)
     })
   }, [allowRemote])
 
   async function setSectionTags(section, tags) {
-    if (!remoteEnabled) {
+    if (!firebaseReady || !allowRemote) {
       setTagsBySection((current) => {
         const next = { ...current, [section]: tags }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next))

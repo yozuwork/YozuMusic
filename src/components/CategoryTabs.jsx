@@ -18,7 +18,7 @@ export default function CategoryTabs({ categories, active, songs, onChange }) {
         const Icon = icons[category]
         const count = category === 'all'
           ? songs.length
-          : songs.filter((song) => song.categories.includes(category)).length
+          : songs.filter((song) => (song.categories || []).includes(category)).length
         return (
           <button
             type="button"

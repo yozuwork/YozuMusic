@@ -32,6 +32,7 @@ export default function ActionModal({
   if (!open) return null
 
   function handleConfirm() {
+    console.log('[YozuMusic][Modal] 按下確認', { mode, hasAction: Boolean(onConfirm) })
     onClose()
     onConfirm?.()
   }

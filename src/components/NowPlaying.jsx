@@ -6,7 +6,7 @@ export default function NowPlaying({ song, onClose }) {
   return (
     <aside className="now-playing" aria-live="polite">
       <div className="mini-cover">
-        {song.coverUrl ? <img src={song.coverUrl} alt="" /> : <span>{song.title.slice(0, 1)}</span>}
+        {song.coverUrl ? <img src={song.coverUrl} alt="" referrerPolicy="no-referrer" /> : <span>{song.title.slice(0, 1)}</span>}
       </div>
       <button className="mock-play" type="button" title="試聽請開啟原始連結"><FiPause /></button>
       <div className="now-playing-copy">

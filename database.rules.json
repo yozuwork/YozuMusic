@@ -4,7 +4,21 @@
     ".write": false,
     "yozuMusic": {
       ".read": "auth != null && auth.uid === 'K6DbALyBPVdX8SkUf36TnyF20433'",
-      ".write": "auth != null && auth.uid === 'K6DbALyBPVdX8SkUf36TnyF20433'"
+      "songs": {
+        "$songId": {
+          ".write": "auth != null && auth.uid === 'K6DbALyBPVdX8SkUf36TnyF20433' && (!newData.exists() || !root.child('yozuMusic/deletedSongs').child($songId).exists())"
+        }
+      },
+      "tags": {
+        "$section": {
+          ".write": "auth != null && auth.uid === 'K6DbALyBPVdX8SkUf36TnyF20433'"
+        }
+      },
+      "deletedSongs": {
+        "$songId": {
+          ".write": "auth != null && auth.uid === 'K6DbALyBPVdX8SkUf36TnyF20433'"
+        }
+      }
     }
   }
 }

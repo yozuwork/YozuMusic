@@ -118,7 +118,7 @@ main { width: min(1500px, 100%); min-width: 0; max-width: 100%; flex: 1 0 auto; 
 .view-small .note-preview { font-size: 9px; }
 .view-small .more-menu summary { width: 29px; height: 27px; }
 .view-small .platform-badge { right: 6px; bottom: 6px; padding: 3px 5px; font-size: 6px; }
-.song-card { width: 100%; min-width: 0; max-width: 100%; overflow: hidden; border: 2px solid var(--ink); border-radius: 10px 14px 11px 13px; background: var(--card); box-shadow: 4px 5px 0 rgba(23,23,19,.12); transition: transform .18s, box-shadow .18s; }
+.song-card { width: 100%; min-width: 0; max-width: 100%; overflow: hidden; border: 2px solid var(--ink); border-radius: 10px 14px 11px 13px; background: var(--card); box-shadow: 4px 5px 0 rgba(23,23,19,.12); cursor: pointer; transition: transform .18s, box-shadow .18s; }
 .song-card.selection-mode { position: relative; }
 .song-card.selection-mode.selected { border-color: var(--ink); box-shadow: 0 0 0 4px var(--accent), 6px 8px 0 rgba(23,23,19,.2); transform: translateY(-2px); }
 .card-select { position: absolute; z-index: 6; top: 9px; left: 9px; display: block; width: 32px; height: 32px; cursor: pointer; }
@@ -181,10 +181,14 @@ main { width: min(1500px, 100%); min-width: 0; max-width: 100%; flex: 1 0 auto; 
 .modal-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 24px; overflow-y: auto; background: rgba(23,23,19,.64); backdrop-filter: blur(4px); animation: fade-in .16s ease-out; }
 .song-modal { position: relative; width: min(760px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border: 2px solid var(--ink); border-radius: 14px 11px 16px 10px; background: var(--card); box-shadow: 10px 12px 0 rgba(0,0,0,.28); animation: modal-in .2s ease-out; }
 .modal-close { position: absolute; z-index: 3; top: 13px; right: 13px; display: grid; width: 34px; height: 34px; place-items: center; border: 2px solid white; border-radius: 50%; background: rgba(23,23,19,.75); color: white; cursor: pointer; }
-.modal-preview { min-height: 165px; padding: 38px 42px 30px; border-bottom: 2px solid var(--ink); background: var(--ink); background-position: center; background-size: cover; color: white; }
+.modal-preview { position: relative; min-height: 165px; padding: 38px 42px 30px; border-bottom: 2px solid var(--ink); background: var(--ink); background-position: center; background-size: cover; color: white; outline: none; }
+.modal-preview:focus { box-shadow: inset 0 0 0 3px rgba(255,255,255,.55); }
 .modal-preview span { display: flex; align-items: center; gap: 7px; font-family: 'Klee One'; font-size: 9px; letter-spacing: 2px; }
 .modal-preview h2 { max-width: 490px; margin: 13px 0 4px; font-size: 27px; line-height: 1.25; }
 .modal-preview p { margin: 0; color: rgba(255,255,255,.75); font-family: 'Klee One'; font-size: 11px; }
+.cover-upload-btn { position: absolute; z-index: 3; right: 16px; bottom: 14px; display: flex; align-items: center; gap: 6px; padding: 7px 14px; border: 2px solid white; border-radius: 9px; background: rgba(23,23,19,.6); color: white; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 800; }
+.cover-upload-btn:disabled { cursor: default; opacity: .6; }
+.cover-paste-hint { position: absolute; z-index: 2; left: 16px; bottom: 20px; display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,.75); font-family: 'Klee One'; font-size: 9.5px; font-weight: 700; pointer-events: none; }
 .song-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 28px 40px 36px; }
 .form-field { min-width: 0; }
 .form-field.full-width, .toggle-fieldset, .form-error, .modal-actions { grid-column: 1 / -1; }

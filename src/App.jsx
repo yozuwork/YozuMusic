@@ -40,9 +40,11 @@ function App() {
   const visibleSongs = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('zh-Hant')
     const result = songs.filter((song) => {
-      const inCategory = activeCategory === 'all' || song.categories.includes(activeCategory)
-      const hasTag = !activeTag || song.tags.includes(activeTag)
-      const searchable = [song.title, song.artist, song.note, ...song.categories, ...song.tags]
+      const categories = Array.isArray(song.categories) ? song.categories : []
+      const tags = Array.isArray(song.tags) ? song.tags : []
+      const inCategory = activeCategory === 'all' || categories.includes(activeCategory)
+      const hasTag = !activeTag || tags.includes(activeTag)
+      const searchable = [song.title, song.artist, song.note, ...categories, ...tags]
         .join(' ')
         .toLocaleLowerCase('zh-Hant')
       const inMobileView = mobileView !== 'favorites' || song.favorite
@@ -111,18 +113,27 @@ function App() {
   }
 
   function removeSong(song) {
+    console.log('[YozuMusic][Delete] 已點擊刪除', { id: song.id, title: song.title })
     setActionModal({
       mode: 'confirm',
       title: '刪除這首歌？',
       message: `確定要刪除「${song.title}」嗎？刪除後無法復原。`,
       confirmText: '刪除',
       onConfirm: async () => {
+        console.log('[YozuMusic][Delete] 已確認刪除', { id: song.id, title: song.title })
         try {
           await deleteSong(song.id)
+          console.log('[YozuMusic][Delete] 刪除流程成功', { id: song.id, title: song.title })
           if (nowPlaying?.id === song.id) setNowPlaying(null)
           setActionModal({ mode: 'success', title: '歌曲已刪除', message: `「${song.title}」已從音樂庫移除。` })
-        } catch {
-          setActionModal({ mode: 'error', title: '刪除失敗', message: '目前無法刪除這首歌，請稍後再試。' })
+        } catch (error) {
+          console.error('[YozuMusic][Delete] 刪除流程失敗', error)
+          const permissionDenied = String(error?.code || '').toLowerCase().includes('permission')
+          setActionModal({
+            mode: 'error',
+            title: '刪除失敗',
+            message: permissionDenied ? 'Firebase 拒絕刪除，請先發布最新的 Database Rules。' : '目前無法刪除這首歌，請稍後再試。',
+          })
         }
       },
     })
@@ -161,8 +172,14 @@ function App() {
           setSelectedSongIds([])
           setEditMode(false)
           setActionModal({ mode: 'success', title: '批次刪除完成', message: `已從音樂庫移除 ${selectedSongs.length} 首歌曲。` })
-        } catch {
-          setActionModal({ mode: 'error', title: '批次刪除失敗', message: '目前無法刪除選取的歌曲，請稍後再試。' })
+        } catch (error) {
+          console.error('Firebase 批次刪除失敗：', error)
+          const permissionDenied = String(error?.code || '').toLowerCase().includes('permission')
+          setActionModal({
+            mode: 'error',
+            title: '批次刪除失敗',
+            message: permissionDenied ? 'Firebase 拒絕刪除，請先發布最新的 Database Rules。' : '目前無法刪除選取的歌曲，請稍後再試。',
+          })
         }
       },
     })
