@@ -9,6 +9,14 @@ npm install
 npm run dev
 ```
 
+## 部署至 GitHub Pages
+
+```bash
+npm run deploy
+```
+
+此指令會先建置專案，再將 `dist` 發布至 repository 的 `gh-pages` branch。
+
 ## 第一版功能
 
 - 以連結新增 YouTube、Spotify、SoundCloud、Apple Music 或其他音樂來源
