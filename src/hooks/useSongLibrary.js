@@ -29,9 +29,8 @@ export default function useSongLibrary(allowRemote = false) {
     const songsRef = ref(database, DATABASE_PATH)
     return onValue(songsRef, (snapshot) => {
       if (!snapshot.exists()) {
-        const initial = readSongs()
-        set(songsRef, Object.fromEntries(initial.map((song) => [song.id, song])))
-          .catch((error) => console.error('無法初始化 Firebase 歌曲資料：', error))
+        setSongs([])
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
         return
       }
 
@@ -53,44 +52,30 @@ export default function useSongLibrary(allowRemote = false) {
     })
   }
 
-  function addSong(song) {
+  async function addSong(song) {
     const nextSong = { ...song, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
     if (!remoteEnabled) {
       updateLocal((current) => [nextSong, ...current])
-      return
+      return nextSong
     }
-    set(ref(database, `${DATABASE_PATH}/${nextSong.id}`), nextSong)
-      .catch((error) => {
-        console.error('無法新增歌曲至 Firebase，已儲存在本機：', error)
-        setRemoteEnabled(false)
-        updateLocal((current) => [nextSong, ...current])
-      })
+    await set(ref(database, `${DATABASE_PATH}/${nextSong.id}`), nextSong)
+    return nextSong
   }
 
-  function updateSong(id, changes) {
+  async function updateSong(id, changes) {
     if (!remoteEnabled) {
       updateLocal((current) => current.map((song) => (song.id === id ? { ...song, ...changes } : song)))
       return
     }
-    update(ref(database, `${DATABASE_PATH}/${id}`), changes)
-      .catch((error) => {
-        console.error('無法更新 Firebase 歌曲，已更新本機資料：', error)
-        setRemoteEnabled(false)
-        updateLocal((current) => current.map((song) => (song.id === id ? { ...song, ...changes } : song)))
-      })
+    await update(ref(database, `${DATABASE_PATH}/${id}`), changes)
   }
 
-  function deleteSong(id) {
+  async function deleteSong(id) {
     if (!remoteEnabled) {
       updateLocal((current) => current.filter((song) => song.id !== id))
       return
     }
-    remove(ref(database, `${DATABASE_PATH}/${id}`))
-      .catch((error) => {
-        console.error('無法刪除 Firebase 歌曲，已刪除本機資料：', error)
-        setRemoteEnabled(false)
-        updateLocal((current) => current.filter((song) => song.id !== id))
-      })
+    await remove(ref(database, `${DATABASE_PATH}/${id}`))
   }
 
   return { songs, addSong, updateSong, deleteSong }

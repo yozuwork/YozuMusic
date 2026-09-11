@@ -53,7 +53,7 @@ export default function useTagLibrary(allowRemote = false) {
     })
   }, [allowRemote])
 
-  function setSectionTags(section, tags) {
+  async function setSectionTags(section, tags) {
     if (!remoteEnabled) {
       setTagsBySection((current) => {
         const next = { ...current, [section]: tags }
@@ -62,16 +62,7 @@ export default function useTagLibrary(allowRemote = false) {
       })
       return
     }
-    set(ref(database, `${DATABASE_PATH}/${section}`), tags)
-      .catch((error) => {
-        console.error('無法儲存 Firebase 標籤，已儲存在本機：', error)
-        setRemoteEnabled(false)
-        setTagsBySection((current) => {
-          const next = { ...current, [section]: tags }
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-          return next
-        })
-      })
+    await set(ref(database, `${DATABASE_PATH}/${section}`), tags)
   }
 
   return { tagsBySection, setSectionTags }

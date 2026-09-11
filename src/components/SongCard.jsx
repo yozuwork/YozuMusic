@@ -1,4 +1,4 @@
-import { FiEdit3, FiExternalLink, FiHeart, FiMoreHorizontal, FiPlay, FiTrash2 } from 'react-icons/fi'
+import { FiCheck, FiEdit3, FiExternalLink, FiHeart, FiMoreHorizontal, FiPlay, FiTrash2 } from 'react-icons/fi'
 import { SiSpotify, SiYoutube } from 'react-icons/si'
 
 function PlatformIcon({ platform }) {
@@ -7,10 +7,16 @@ function PlatformIcon({ platform }) {
   return <FiExternalLink aria-hidden="true" />
 }
 
-export default function SongCard({ song, tagLabels, onEdit, onDelete, onToggleFavorite, onPlay }) {
+export default function SongCard({ song, tagLabels, onEdit, onDelete, onToggleFavorite, onPlay, selectionMode = false, selected = false, onToggleSelect }) {
   return (
-    <article className="song-card">
-      <button className="cover-button" type="button" onClick={() => onPlay(song)} aria-label={`播放 ${song.title}`}>
+    <article className={`song-card${selectionMode ? ' selection-mode' : ''}${selected ? ' selected' : ''}`}>
+      {selectionMode && (
+        <label className="card-select" aria-label={`選取 ${song.title}`}>
+          <input type="checkbox" checked={selected} onChange={() => onToggleSelect(song.id)} />
+          <span aria-hidden="true">{selected && <FiCheck />}</span>
+        </label>
+      )}
+      <button className="cover-button" type="button" onClick={() => selectionMode ? onToggleSelect(song.id) : onPlay(song)} aria-label={selectionMode ? `${selected ? '取消選取' : '選取'} ${song.title}` : `播放 ${song.title}`}>
         {song.coverUrl ? (
           <img src={song.coverUrl} alt="" loading="lazy" />
         ) : (
@@ -29,14 +35,14 @@ export default function SongCard({ song, tagLabels, onEdit, onDelete, onToggleFa
             <h2>{song.title}</h2>
             <p>{song.artist || '未知創作者'}</p>
           </div>
-          <button
+          {!selectionMode && <button
             className={song.favorite ? 'heart-button active' : 'heart-button'}
             type="button"
             aria-label={song.favorite ? '取消最愛' : '加入最愛'}
             onClick={() => onToggleFavorite(song)}
           >
             <FiHeart aria-hidden="true" />
-          </button>
+          </button>}
         </div>
 
         <div className="song-tags">
@@ -49,14 +55,14 @@ export default function SongCard({ song, tagLabels, onEdit, onDelete, onToggleFa
 
         <div className="card-footer">
           <span className="note-preview">{song.note || '沒有備註'}</span>
-          <details className="more-menu">
+          {!selectionMode && <details className="more-menu">
             <summary aria-label="更多操作"><FiMoreHorizontal aria-hidden="true" /></summary>
             <div>
               <button type="button" onClick={() => onEdit(song)}><FiEdit3 /> 編輯</button>
               <a href={song.url} target="_blank" rel="noreferrer"><FiExternalLink /> 開啟來源</a>
               <button className="danger" type="button" onClick={() => onDelete(song)}><FiTrash2 /> 刪除</button>
             </div>
-          </details>
+          </details>}
         </div>
       </div>
     </article>

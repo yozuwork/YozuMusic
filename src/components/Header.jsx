@@ -1,13 +1,49 @@
-import { FiHeadphones, FiPlus, FiSearch } from 'react-icons/fi'
+import { useEffect, useRef, useState } from 'react'
+import { FiHeadphones, FiLogOut, FiPlus, FiSearch } from 'react-icons/fi'
 import CategoryTabs from './CategoryTabs.jsx'
 
-export default function Header({ search, onSearchChange, onAdd, theme, onThemeChange, categories, activeCategory, songs, onCategoryChange }) {
+export default function Header({ user, onLogout, search, onSearchChange, onAdd, theme, onThemeChange, categories, activeCategory, songs, onCategoryChange }) {
+  const [accountOpen, setAccountOpen] = useState(false)
+  const accountRef = useRef(null)
+
+  useEffect(() => {
+    if (!accountOpen) return undefined
+    const closeOnOutsideClick = (event) => {
+      if (!accountRef.current?.contains(event.target)) setAccountOpen(false)
+    }
+    const closeOnEscape = (event) => event.key === 'Escape' && setAccountOpen(false)
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [accountOpen])
+
   return (
     <header className="site-header">
-      <a className="brand" href="#top" aria-label="柚子音樂庫首頁">
-        <span className="brand-mark"><FiHeadphones aria-hidden="true" /></span>
-        <span>柚子音樂庫</span>
-      </a>
+      <div className="brand">
+        <div className="account-menu" ref={accountRef}>
+          <button className="brand-mark account-trigger" type="button" aria-label="開啟帳號選單" aria-expanded={accountOpen} onClick={() => setAccountOpen((open) => !open)}>
+            <FiHeadphones className="profile-fallback" aria-hidden="true" />
+          </button>
+          {accountOpen && (
+            <div className="account-dropdown">
+              <div className="account-summary">
+                <span className="account-avatar-small">
+                  <FiHeadphones aria-hidden="true" />
+                </span>
+                <div>
+                  <strong>{user?.displayName || '管理者'}</strong>
+                  <small>{user?.email}</small>
+                </div>
+              </div>
+              <button type="button" onClick={() => { setAccountOpen(false); onLogout() }}><FiLogOut /> 登出</button>
+            </div>
+          )}
+        </div>
+        <a className="brand-name" href="#top" aria-label="柚子音樂庫首頁">柚子音樂庫</a>
+      </div>
 
       <CategoryTabs categories={categories} active={activeCategory} songs={songs} onChange={onCategoryChange} />
 

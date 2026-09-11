@@ -1,6 +1,24 @@
-import { FiEdit3, FiSliders } from 'react-icons/fi'
+import { FiCheckSquare, FiEdit3, FiSliders, FiTag, FiTrash2, FiX } from 'react-icons/fi'
 
-export default function TagFilters({ tags, activeTag, onChange, onEdit, sort, onSortChange, cardSize, onCardSizeChange, pageSize, onPageSizeChange, resultCount }) {
+export default function TagFilters({
+  tags,
+  activeTag,
+  onChange,
+  editMode,
+  selectedCount,
+  allSelected,
+  onToggleEditMode,
+  onEditTags,
+  onSelectAll,
+  onDeleteSelected,
+  sort,
+  onSortChange,
+  cardSize,
+  onCardSizeChange,
+  pageSize,
+  onPageSizeChange,
+  resultCount,
+}) {
   return (
     <div className="filter-row">
       <div className="tag-filter" aria-label="歌曲感覺篩選">
@@ -37,7 +55,9 @@ export default function TagFilters({ tags, activeTag, onChange, onEdit, sort, on
           <option value="flow">瀑布流</option>
         </select>
       </div>
-      <button className="edit-tags-button" type="button" onClick={onEdit}><FiEdit3 /> 編輯標籤</button>
+      <button className={`edit-tags-button${editMode ? ' active' : ''}`} type="button" onClick={onToggleEditMode}>
+        {editMode ? <FiX /> : <FiEdit3 />} {editMode ? '完成' : '編輯'}
+      </button>
       <strong className="mobile-result-count">{resultCount} 首</strong>
       <label className="sort-control">
         <FiSliders aria-hidden="true" />
@@ -47,6 +67,16 @@ export default function TagFilters({ tags, activeTag, onChange, onEdit, sort, on
           <option value="favorite">最愛優先</option>
         </select>
       </label>
+
+      {editMode && (
+        <div className="bulk-edit-toolbar" aria-label="批次編輯工具列">
+          <strong>{selectedCount ? `已選取 ${selectedCount} 首` : '請圈選要處理的卡片'}</strong>
+          <button type="button" onClick={onEditTags}><FiTag /> 編輯標籤</button>
+          <button type="button" onClick={onSelectAll}><FiCheckSquare /> {allSelected ? '取消全選' : '全選本頁'}</button>
+          <button className="bulk-delete-button" type="button" disabled={!selectedCount} onClick={onDeleteSelected}><FiTrash2 /> 刪除所選</button>
+          <button className="bulk-done-button" type="button" onClick={onToggleEditMode}><FiX /> 完成</button>
+        </div>
+      )}
     </div>
   )
 }

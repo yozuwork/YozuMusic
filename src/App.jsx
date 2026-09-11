@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FiChevronLeft, FiChevronRight, FiDisc, FiHeart, FiMusic, FiPlus, FiPlusCircle, FiSettings, FiX } from 'react-icons/fi'
+import ActionModal from './components/ActionModal.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import Header from './components/Header.jsx'
 import NowPlaying from './components/NowPlaying.jsx'
@@ -32,6 +33,9 @@ function App() {
   const [tagEditorOpen, setTagEditorOpen] = useState(false)
   const [editingSong, setEditingSong] = useState(null)
   const [nowPlaying, setNowPlaying] = useState(null)
+  const [actionModal, setActionModal] = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [selectedSongIds, setSelectedSongIds] = useState([])
 
   const visibleSongs = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('zh-Hant')
@@ -57,6 +61,7 @@ function App() {
     const start = (currentPage - 1) * Number(pageSize)
     return visibleSongs.slice(start, start + Number(pageSize))
   }, [currentPage, pageSize, visibleSongs])
+  const allDisplayedSelected = displayedSongs.length > 0 && displayedSongs.every((song) => selectedSongIds.includes(song.id))
 
   useEffect(() => {
     setCurrentPage(1)
@@ -69,6 +74,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('yozu-music-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    setSelectedSongIds([])
+  }, [activeCategory, activeTag, currentPage, mobileView, pageSize, search, sort])
 
   function openAdd() {
     setEditingSong(null)
@@ -85,16 +94,78 @@ function App() {
     setEditingSong(null)
   }
 
-  function saveSong(song) {
-    if (editingSong) updateSong(editingSong.id, song)
-    else addSong(song)
-    closeModal()
+  async function saveSong(song) {
+    const wasEditing = Boolean(editingSong)
+    try {
+      if (editingSong) await updateSong(editingSong.id, song)
+      else await addSong(song)
+      closeModal()
+      setActionModal({
+        mode: 'success',
+        title: wasEditing ? '歌曲已更新' : '歌曲已收藏',
+        message: `「${song.title}」已儲存到音樂庫。`,
+      })
+    } catch {
+      setActionModal({ mode: 'error', title: '歌曲儲存失敗', message: '目前無法儲存這首歌，請稍後再試。' })
+    }
   }
 
   function removeSong(song) {
-    if (!window.confirm(`確定要刪除「${song.title}」嗎？`)) return
-    deleteSong(song.id)
-    if (nowPlaying?.id === song.id) setNowPlaying(null)
+    setActionModal({
+      mode: 'confirm',
+      title: '刪除這首歌？',
+      message: `確定要刪除「${song.title}」嗎？刪除後無法復原。`,
+      confirmText: '刪除',
+      onConfirm: async () => {
+        try {
+          await deleteSong(song.id)
+          if (nowPlaying?.id === song.id) setNowPlaying(null)
+          setActionModal({ mode: 'success', title: '歌曲已刪除', message: `「${song.title}」已從音樂庫移除。` })
+        } catch {
+          setActionModal({ mode: 'error', title: '刪除失敗', message: '目前無法刪除這首歌，請稍後再試。' })
+        }
+      },
+    })
+  }
+
+  function toggleEditMode() {
+    if (editMode) setSelectedSongIds([])
+    setEditMode((current) => !current)
+  }
+
+  function toggleSongSelection(songId) {
+    setSelectedSongIds((current) => current.includes(songId)
+      ? current.filter((id) => id !== songId)
+      : [...current, songId])
+  }
+
+  function toggleSelectAll() {
+    const displayedIds = displayedSongs.map((song) => song.id)
+    setSelectedSongIds((current) => allDisplayedSelected
+      ? current.filter((id) => !displayedIds.includes(id))
+      : [...new Set([...current, ...displayedIds])])
+  }
+
+  function removeSelectedSongs() {
+    const selectedSongs = songs.filter((song) => selectedSongIds.includes(song.id))
+    if (!selectedSongs.length) return
+    setActionModal({
+      mode: 'confirm',
+      title: `刪除 ${selectedSongs.length} 首歌曲？`,
+      message: '確定要刪除所有選取的卡片嗎？刪除後無法復原。',
+      confirmText: `刪除 ${selectedSongs.length} 首`,
+      onConfirm: async () => {
+        try {
+          await Promise.all(selectedSongs.map((song) => deleteSong(song.id)))
+          if (selectedSongIds.includes(nowPlaying?.id)) setNowPlaying(null)
+          setSelectedSongIds([])
+          setEditMode(false)
+          setActionModal({ mode: 'success', title: '批次刪除完成', message: `已從音樂庫移除 ${selectedSongs.length} 首歌曲。` })
+        } catch {
+          setActionModal({ mode: 'error', title: '批次刪除失敗', message: '目前無法刪除選取的歌曲，請稍後再試。' })
+        }
+      },
+    })
   }
 
   function playSong(song) {
@@ -114,9 +185,19 @@ function App() {
     )
   }
 
+  async function toggleFavorite(song) {
+    try {
+      await updateSong(song.id, { favorite: !song.favorite })
+    } catch {
+      setActionModal({ mode: 'error', title: '更新最愛失敗', message: '目前無法更新這首歌，請稍後再試。' })
+    }
+  }
+
   return (
     <div id="top" className={`app theme-${theme}${nowPlaying ? ' has-player' : ''}`}>
       <Header
+        user={user}
+        onLogout={logout}
         search={search}
         onSearchChange={setSearch}
         onAdd={openAdd}
@@ -137,7 +218,13 @@ function App() {
           tags={currentTags}
           activeTag={activeTag}
           onChange={setActiveTag}
-          onEdit={() => setTagEditorOpen(true)}
+          editMode={editMode}
+          selectedCount={selectedSongIds.length}
+          allSelected={allDisplayedSelected}
+          onToggleEditMode={toggleEditMode}
+          onEditTags={() => setTagEditorOpen(true)}
+          onSelectAll={toggleSelectAll}
+          onDeleteSelected={removeSelectedSongs}
           sort={sort}
           onSortChange={setSort}
           cardSize={cardSize}
@@ -158,7 +245,10 @@ function App() {
                   onEdit={openEdit}
                   onDelete={removeSong}
                   onPlay={playSong}
-                  onToggleFavorite={(target) => updateSong(target.id, { favorite: !target.favorite })}
+                  onToggleFavorite={toggleFavorite}
+                  selectionMode={editMode}
+                  selected={selectedSongIds.includes(song.id)}
+                  onToggleSelect={toggleSongSelection}
                 />
               ))}
             </div>
@@ -189,13 +279,28 @@ function App() {
         sectionName={viewName}
         tags={currentTags}
         onClose={() => setTagEditorOpen(false)}
-        onSave={(tags) => {
-          setSectionTags(activeCategory, tags)
-          if (activeTag && !tags.some((tag) => tag.id === activeTag)) setActiveTag('')
-          setTagEditorOpen(false)
+        onSave={async (tags) => {
+          try {
+            await setSectionTags(activeCategory, tags)
+            if (activeTag && !tags.some((tag) => tag.id === activeTag)) setActiveTag('')
+            setTagEditorOpen(false)
+            setActionModal({ mode: 'success', title: '標籤已更新', message: `${viewName}的標籤設定已儲存。` })
+          } catch {
+            setActionModal({ mode: 'error', title: '標籤儲存失敗', message: '目前無法儲存標籤，請稍後再試。' })
+          }
         }}
       />
       <NowPlaying song={nowPlaying} onClose={() => setNowPlaying(null)} />
+      <ActionModal
+        open={Boolean(actionModal)}
+        mode={actionModal?.mode}
+        title={actionModal?.title}
+        message={actionModal?.message}
+        confirmText={actionModal?.confirmText}
+        cancelText={actionModal?.cancelText}
+        onConfirm={actionModal?.onConfirm}
+        onClose={() => setActionModal(null)}
+      />
 
       {mobileSettingsOpen && (
         <aside className="mobile-settings-panel" aria-label="手機版設定">
@@ -205,8 +310,7 @@ function App() {
             <button className={theme === 'green' ? 'selected' : ''} type="button" onClick={() => setTheme('green')}><i className="green" /> 綠色</button>
             <button className={theme === 'pink' ? 'selected' : ''} type="button" onClick={() => setTheme('pink')}><i className="pink" /> 莓果粉</button>
           </div>
-          <button className="mobile-edit-tags" type="button" onClick={() => { setMobileSettingsOpen(false); setTagEditorOpen(true) }}>編輯目前分區標籤</button>
-          <button className="mobile-signout" type="button" onClick={logout}>登出</button>
+          <button className="mobile-edit-tags" type="button" onClick={() => { setMobileSettingsOpen(false); setEditMode(true); setSelectedSongIds([]) }}>編輯卡片與標籤</button>
         </aside>
       )}
 
