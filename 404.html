@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <title>柚子音樂庫</title>
+    <script>
+      const base = '/YozuMusic/';
+      if (location.pathname.startsWith(base)) {
+        location.replace(base + '?route=' + encodeURIComponent(location.pathname.slice(base.length) + location.search + location.hash));
+      }
+    </script>
+  </head>
+  <body><a href="/YozuMusic/">返回柚子音樂庫</a></body>
+</html>
