@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FiHeadphones, FiLogOut, FiPlus, FiSearch } from 'react-icons/fi'
 import CategoryTabs from './CategoryTabs.jsx'
+import { categoryUrl } from '../utils/routes.js'
 
 export default function Header({ user, onLogout, search, onSearchChange, onAdd, addLabel = '貼上音樂', theme, onThemeChange, categories, activeCategory, songs, workCount, onCategoryChange }) {
   const [accountOpen, setAccountOpen] = useState(false)
@@ -42,7 +43,11 @@ export default function Header({ user, onLogout, search, onSearchChange, onAdd, 
             </div>
           )}
         </div>
-        <a className="brand-name" href="#top" aria-label="柚子音樂庫首頁">柚子音樂庫</a>
+        <a className="brand-name" href={categoryUrl('all')} onClick={(event) => {
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+          event.preventDefault()
+          onCategoryChange('all')
+        }} aria-label="柚子音樂庫首頁">柚子音樂庫</a>
       </div>
 
       <CategoryTabs categories={categories} active={activeCategory} songs={songs} workCount={workCount} onChange={onCategoryChange} />

@@ -1,4 +1,5 @@
 import { FiBookOpen, FiGrid, FiHeadphones, FiMusic, FiPenTool } from 'react-icons/fi'
+import { categoryUrl } from '../utils/routes.js'
 
 const icons = {
   all: FiGrid,
@@ -21,17 +22,21 @@ export default function CategoryTabs({ categories, active, songs, workCount = 0,
             ? workCount
             : songs.filter((song) => (song.categories || []).includes(category)).length
         return (
-          <button
-            type="button"
+          <a
+            href={categoryUrl(category)}
             key={category}
             className={active === category ? 'category-tab active' : 'category-tab'}
             aria-current={active === category ? 'page' : undefined}
-            onClick={() => onChange(category)}
+            onClick={(event) => {
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+              event.preventDefault()
+              onChange(category)
+            }}
           >
             <Icon aria-hidden="true" />
             <span>{category === 'all' ? '全部收藏' : category}</span>
             <small>{String(count).padStart(2, '0')}</small>
-          </button>
+          </a>
         )
       })}
     </nav>

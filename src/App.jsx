@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FiChevronLeft, FiChevronRight, FiDisc, FiHeart, FiMusic, FiPlus, FiPlusCircle, FiSettings, FiSliders, FiX } from 'react-icons/fi'
+import { FiChevronLeft, FiChevronRight, FiDisc, FiHeart, FiMusic, FiPlus, FiPlusCircle, FiSettings, FiSliders, FiTag, FiX } from 'react-icons/fi'
 import ActionModal from './components/ActionModal.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import Header from './components/Header.jsx'
@@ -16,6 +16,7 @@ import useSongLibrary from './hooks/useSongLibrary.js'
 import useTagLibrary from './hooks/useTagLibrary.js'
 import useWorkLibrary from './hooks/useWorkLibrary.js'
 import './App.css'
+import { categoryUrl, readRoute } from './utils/routes.js'
 
 function App() {
   const { user, loading: authLoading, error: authError, login, logout } = useFirebaseAuth()
@@ -23,7 +24,25 @@ function App() {
   const { songs, addSong, updateSong, deleteSong } = useSongLibrary(isOwner)
   const { tagsBySection, setSectionTags } = useTagLibrary(isOwner)
   const { works, addWork, updateWork } = useWorkLibrary(isOwner)
-  const [activeCategory, setActiveCategory] = useState('all')
+  const [route, setRoute] = useState(() => readRoute(window.location.pathname))
+  const activeCategory = route.category
+  const routeWork = works.find((work) => work.id === route.workId)
+
+  function navigate(path) {
+    window.history.pushState({}, '', path)
+    setRoute(readRoute(window.location.pathname))
+    window.scrollTo(0, 0)
+  }
+
+  function setActiveCategory(category) {
+    navigate(categoryUrl(category))
+  }
+
+  useEffect(() => {
+    const handlePopState = () => setRoute(readRoute(window.location.pathname))
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
   const [activeTag, setActiveTag] = useState('')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
@@ -157,8 +176,7 @@ function App() {
   }
 
   function openWorkEdit(work) {
-    setEditingWork(work)
-    setWorkModalOpen(true)
+    navigate(`${categoryUrl('作品')}/view/${encodeURIComponent(work.id)}`)
   }
 
   function closeWorkModal() {
@@ -169,17 +187,18 @@ function App() {
   async function saveWork(work) {
     try {
       let savedWork
-      if (editingWork) {
-        await updateWork(editingWork.id, work)
-        await Promise.all(songs.filter((song) => song.workId === editingWork.id && song.workTitle !== work.title).map((song) => updateSong(song.id, { workTitle: work.title })))
-        savedWork = { ...editingWork, ...work }
+      const currentWork = workModalOpen ? editingWork : routeWork
+      if (currentWork) {
+        await updateWork(currentWork.id, work)
+        await Promise.all(songs.filter((song) => song.workId === currentWork.id && song.workTitle !== work.title).map((song) => updateSong(song.id, { workTitle: work.title })))
+        savedWork = { ...currentWork, ...work }
       } else {
         savedWork = await addWork(work)
       }
       closeWorkModal()
       setHighlightedWorkId(savedWork.id)
       setActiveWorkType('all')
-      setActionModal({ mode: 'success', title: editingWork ? '作品已更新' : '作品已建立', message: `「${savedWork.title}」已儲存。` })
+      setActionModal({ mode: 'success', title: currentWork ? '作品已更新' : '作品已建立', message: `「${savedWork.title}」已儲存。` })
     } catch {
       setActionModal({ mode: 'error', title: '作品儲存失敗', message: '目前無法儲存這個作品，請稍後再試。' })
     }
@@ -338,6 +357,26 @@ function App() {
       />
 
       <main>
+        {route.notFound || (route.workId && !routeWork) ? (
+          <div className="empty-state"><FiMusic /><h2>{route.notFound ? '找不到這個頁面' : '作品尚未載入或已不存在'}</h2><button type="button" onClick={() => setActiveCategory('作品')}>返回作品</button></div>
+        ) : route.workId ? (
+          <WorkModal
+            key={route.workId}
+            open
+            page
+            work={routeWork}
+            songs={songs}
+            tags={currentTags}
+            onClose={() => setActiveCategory('作品')}
+            onSave={saveWork}
+            onEditSong={openEdit}
+            onDeleteSong={removeSong}
+            onPlaySong={playSong}
+            onToggleFavorite={toggleFavorite}
+            onEditTags={() => setTagEditorOpen(true)}
+            onDeleteSelectedSongs={removeWorkSongs}
+          />
+        ) : <>
         {activeCategory === '作品' && (
           <div className="work-type-filter" aria-label="作品類型篩選">
             <div className="work-type-pills">
@@ -367,6 +406,9 @@ function App() {
                 <option value="title">作品名稱</option>
               </select>
             </label>
+            <button className="edit-tags-button work-edit-tags-button" type="button" onClick={() => setTagEditorOpen(true)}>
+              <FiTag aria-hidden="true" /> 編輯標籤
+            </button>
           </div>
         )}
         {activeCategory !== '作品' && <TagFilters
@@ -454,6 +496,7 @@ function App() {
             </nav>
           )}
         </section>
+        </>}
       </main>
 
       <footer className="site-footer"><FiDisc /> YOZU MUSIC LIBRARY <span>— 收好每一段想再聽見的聲音</span></footer>
@@ -475,15 +518,16 @@ function App() {
       />
       <TagEditor
         open={tagEditorOpen}
+        section={activeCategory}
         sectionName={viewName}
         tags={currentTags}
         onClose={() => setTagEditorOpen(false)}
-        onSave={async (tags) => {
+        onSave={async (tags, additions) => {
           try {
-            await setSectionTags(activeCategory, tags)
+            const updatedSections = await setSectionTags(activeCategory, tags, additions)
             if (activeTag && !tags.some((tag) => tag.id === activeTag)) setActiveTag('')
             setTagEditorOpen(false)
-            setActionModal({ mode: 'success', title: '標籤已更新', message: `${viewName}的標籤設定已儲存。` })
+            setActionModal({ mode: 'success', title: '標籤已更新', message: `${updatedSections.map((section) => section === 'all' ? '全部收藏' : section).join('、')}的標籤設定已儲存。` })
           } catch {
             setActionModal({ mode: 'error', title: '標籤儲存失敗', message: '目前無法儲存標籤，請稍後再試。' })
           }

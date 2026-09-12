@@ -11,6 +11,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      const route = new URLSearchParams(location.search).get('route');
+      if (route && !route.startsWith('/') && !route.includes('://')) {
+        history.replaceState(null, '', '%BASE_URL%' + route);
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

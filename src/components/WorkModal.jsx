@@ -8,6 +8,7 @@ const emptyForm = { title: '', type: '動漫', coverUrl: '', coverPosX: 50, cove
 
 export default function WorkModal({
   open,
+  page = false,
   work,
   songs = [],
   tags = [],
@@ -75,7 +76,7 @@ export default function WorkModal({
   useEffect(() => {
     if (!open) return undefined
     function handleKeyDown(event) {
-      if (event.key === 'Escape') resetAndClose()
+      if (event.key === 'Escape' && !page) resetAndClose()
     }
     function handlePaste(event) {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return
@@ -107,10 +108,7 @@ export default function WorkModal({
     return songs.filter((song) => song.workId === work.id || (!song.workId && song.workTitle === work.title))
   }, [songs, work])
 
-  const availableTags = useMemo(
-    () => tags.filter((tag) => workSongs.some((song) => song.tags?.includes(tag.id))),
-    [tags, workSongs],
-  )
+  const availableTags = tags
 
   const relatedSongs = useMemo(() => {
     return workSongs
@@ -222,10 +220,10 @@ export default function WorkModal({
   }
 
   return (
-    <div className="modal-backdrop work-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && resetAndClose()}>
-      <section className="work-modal" role="dialog" aria-modal="true" aria-label={work ? '編輯作品' : '新增作品卡片'}>
+    <div className={page ? 'work-page' : 'modal-backdrop work-modal-backdrop'} onMouseDown={(event) => !page && event.target === event.currentTarget && resetAndClose()}>
+      <section className="work-modal" role={page ? undefined : 'dialog'} aria-modal={page ? undefined : true} aria-label={work ? '編輯作品' : '新增作品卡片'}>
         <span className="work-modal-tag">{work ? <FiEdit3 aria-hidden="true" /> : <FiPlus aria-hidden="true" />} {work ? '編輯作品' : '新增作品'}</span>
-        <button className="work-modal-close" type="button" aria-label="關閉" onClick={resetAndClose}><FiX /></button>
+        <button className="work-modal-close" type="button" aria-label={page ? '返回作品' : '關閉'} title={page ? '返回作品' : '關閉'} onClick={resetAndClose}>{page ? <FiChevronLeft /> : <FiX />}</button>
 
         <div ref={coverBannerRef} className={coverClassName} style={coverStyle} role="button" tabIndex="0" aria-label="封面預覽，可貼上或拖曳圖片" onFocus={() => setIsCoverFocused(true)} onBlur={() => setIsCoverFocused(false)} onPointerDown={handleCoverPointerDown} onPointerMove={handleCoverPointerMove} onPointerUp={endCoverDrag} onPointerCancel={endCoverDrag} onPointerLeave={endCoverDrag}>
           <button className="work-cover-btn" type="button" disabled={isProcessingCover} onPointerDown={(event) => event.stopPropagation()} onClick={() => fileInputRef.current?.click()}>

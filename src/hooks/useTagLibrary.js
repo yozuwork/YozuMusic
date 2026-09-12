@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { onValue, ref, set } from 'firebase/database'
+import { onValue, ref, set, update } from 'firebase/database'
+import { buildTagUpdates } from '../utils/tagSync.js'
 import { MAIN_CATEGORIES, MOOD_TAGS } from '../data/initialSongs.js'
 import { database, firebaseReady } from '../lib/firebase.js'
 
@@ -41,7 +42,7 @@ export default function useTagLibrary(allowRemote = false) {
 
       const defaults = initialTags()
       const value = snapshot.val() || {}
-      const nextTags = Object.fromEntries(SECTIONS.map((section) => [section, value[section] || defaults[section]]))
+      const nextTags = Object.fromEntries(SECTIONS.map((section) => [section, value[section] === false ? [] : value[section] || defaults[section]]))
       setTagsBySection(nextTags)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTags))
     }, (error) => {
@@ -49,16 +50,20 @@ export default function useTagLibrary(allowRemote = false) {
     })
   }, [allowRemote])
 
-  async function setSectionTags(section, tags) {
+  async function setSectionTags(section, tags, additions = []) {
+    const updates = buildTagUpdates(tagsBySection, section, tags, additions)
     if (!firebaseReady || !allowRemote) {
       setTagsBySection((current) => {
-        const next = { ...current, [section]: tags }
+        const next = { ...current, ...buildTagUpdates(current, section, tags, additions) }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
         return next
       })
-      return
+      return Object.keys(updates)
     }
-    await set(ref(database, `${DATABASE_PATH}/${section}`), tags)
+    await update(ref(database, DATABASE_PATH), Object.fromEntries(
+      Object.entries(updates).map(([key, value]) => [key, value.length ? value : false]),
+    ))
+    return Object.keys(updates)
   }
 
   return { tagsBySection, setSectionTags }
