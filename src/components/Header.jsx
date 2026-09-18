@@ -3,9 +3,27 @@ import { FiHeadphones, FiLogOut, FiPlus, FiSearch } from 'react-icons/fi'
 import CategoryTabs from './CategoryTabs.jsx'
 import { categoryUrl } from '../utils/routes.js'
 
+const MIGRATION_ENABLED = import.meta.env.VITE_ENABLE_MIGRATION === 'true'
+
 export default function Header({ user, onLogout, search, onSearchChange, onAdd, addLabel = '貼上音樂', theme, onThemeChange, categories, activeCategory, songs, workCount, onCategoryChange }) {
   const [accountOpen, setAccountOpen] = useState(false)
+  const [migrationStatus, setMigrationStatus] = useState('idle')
   const accountRef = useRef(null)
+
+  async function runMigration() {
+    if (!window.confirm('確定要把目前的 Realtime Database 資料搬到 Firestore 嗎？（不會刪除原本的資料，可重複執行）')) return
+    setMigrationStatus('running')
+    try {
+      const { migrateToFirestore } = await import('../migration/migrateToFirestore.js')
+      const summary = await migrateToFirestore()
+      window.alert(`搬遷完成：歌曲 ${summary.songsWritten} 首、作品 ${summary.worksWritten} 部、標籤分類 ${summary.tagSectionsWritten} 組（補上 workId：${summary.backfilledWorkIds} 首）。`)
+      setMigrationStatus('done')
+    } catch (error) {
+      console.error('[YozuMusic][Migration] 搬遷失敗', error)
+      window.alert('搬遷失敗，請查看主控台錯誤訊息。')
+      setMigrationStatus('error')
+    }
+  }
 
   useEffect(() => {
     if (!accountOpen) return undefined
@@ -39,6 +57,11 @@ export default function Header({ user, onLogout, search, onSearchChange, onAdd, 
                   <small>{user?.email}</small>
                 </div>
               </div>
+              {MIGRATION_ENABLED && (
+                <button type="button" onClick={runMigration} disabled={migrationStatus === 'running'}>
+                  {migrationStatus === 'running' ? '搬遷中…' : '搬遷到 Firestore'}
+                </button>
+              )}
               <button type="button" onClick={() => { setAccountOpen(false); onLogout() }}><FiLogOut /> 登出</button>
             </div>
           )}

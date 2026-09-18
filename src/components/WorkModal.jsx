@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FiCheck, FiChevronLeft, FiChevronRight, FiClipboard, FiEdit3, FiImage, FiMaximize, FiMove, FiPlus, FiX } from 'react-icons/fi'
 import { compressCoverImage } from '../utils/compressCoverImage.js'
+import { fetchWorkSongsCount, fetchWorkSongsPage } from '../lib/firestore/songsApi.js'
 import SongCard from './SongCard.jsx'
 import TagFilters from './TagFilters.jsx'
 
@@ -11,6 +12,7 @@ export default function WorkModal({
   page = false,
   work,
   songs = [],
+  remoteFirestore = false,
   tags = [],
   onClose,
   onSave,
@@ -124,7 +126,81 @@ export default function WorkModal({
   const displayedSongs = pageSize === 'flow'
     ? relatedSongs
     : relatedSongs.slice((currentPage - 1) * Number(pageSize), currentPage * Number(pageSize))
-  const allDisplayedSelected = displayedSongs.length > 0 && displayedSongs.every((song) => selectedSongIds.includes(song.id))
+
+  // Firestore 模式：關聯音樂改成真正的分頁查詢（workId==work.id + 可選標籤），取代上面整包篩選/切片
+  const [workSongPageIndex, setWorkSongPageIndex] = useState(0)
+  const [workSongPageItems, setWorkSongPageItems] = useState([])
+  const [workSongHasNextPage, setWorkSongHasNextPage] = useState(false)
+  const [workSongTotalCount, setWorkSongTotalCount] = useState(0)
+  const [workSongPageLoading, setWorkSongPageLoading] = useState(false)
+  const workSongCursorsRef = useRef([null])
+  const workSongFilterKeyRef = useRef('')
+
+  useEffect(() => {
+    if (!remoteFirestore || !work) return undefined
+
+    const filterKey = JSON.stringify({ workId: work.id, activeTag, sort, pageSize })
+    let pageIndexToUse = workSongPageIndex
+    if (workSongFilterKeyRef.current !== filterKey) {
+      workSongFilterKeyRef.current = filterKey
+      workSongCursorsRef.current = [null]
+      pageIndexToUse = 0
+      if (workSongPageIndex !== 0) {
+        setWorkSongPageIndex(0)
+        return undefined
+      }
+    }
+
+    let cancelled = false
+    setWorkSongPageLoading(true)
+    fetchWorkSongsPage({
+      workId: work.id,
+      tag: activeTag,
+      sort,
+      pageSize,
+      cursor: workSongCursorsRef.current[pageIndexToUse] ?? null,
+    }).then(({ items, lastDoc, hasMore }) => {
+      if (cancelled) return
+      setWorkSongPageItems(items)
+      setWorkSongHasNextPage(hasMore)
+      if (!workSongCursorsRef.current[pageIndexToUse + 1]) {
+        workSongCursorsRef.current = [...workSongCursorsRef.current.slice(0, pageIndexToUse + 1), lastDoc]
+      }
+    }).catch((error) => {
+      console.error('無法讀取關聯音樂分頁：', error)
+    }).finally(() => {
+      if (!cancelled) setWorkSongPageLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [remoteFirestore, work, activeTag, sort, pageSize, workSongPageIndex])
+
+  useEffect(() => {
+    if (!remoteFirestore || !work) return undefined
+    let cancelled = false
+    fetchWorkSongsCount({ workId: work.id, tag: activeTag })
+      .then((count) => { if (!cancelled) setWorkSongTotalCount(count) })
+      .catch((error) => console.error('無法讀取關聯音樂總數：', error))
+    return () => { cancelled = true }
+  }, [remoteFirestore, work, activeTag])
+
+  const songsForList = remoteFirestore ? workSongPageItems : displayedSongs
+  const listResultCount = remoteFirestore ? workSongTotalCount : relatedSongs.length
+  const listPageCount = remoteFirestore
+    ? (pageSize === 'flow' ? 1 : Math.max(1, Math.ceil(workSongTotalCount / Number(pageSize))))
+    : pageCount
+  const listCurrentPage = remoteFirestore ? workSongPageIndex + 1 : currentPage
+  const listHasPrev = remoteFirestore ? workSongPageIndex > 0 : currentPage > 1
+  const listHasNext = remoteFirestore ? workSongHasNextPage : currentPage < pageCount
+  function goListPrevPage() {
+    if (remoteFirestore) setWorkSongPageIndex((index) => index - 1)
+    else setCurrentPage((page) => page - 1)
+  }
+  function goListNextPage() {
+    if (remoteFirestore) setWorkSongPageIndex((index) => index + 1)
+    else setCurrentPage((page) => page + 1)
+  }
+
+  const allDisplayedSelected = songsForList.length > 0 && songsForList.every((song) => selectedSongIds.includes(song.id))
   const tagLabels = Object.fromEntries(tags.map((tag) => [tag.id, tag.label]))
 
   useEffect(() => {
@@ -205,7 +281,7 @@ export default function WorkModal({
   }
 
   function toggleSelectAll() {
-    const ids = displayedSongs.map((song) => song.id)
+    const ids = songsForList.map((song) => song.id)
     setSelectedSongIds((current) => allDisplayedSelected ? current.filter((id) => !ids.includes(id)) : [...new Set([...current, ...ids])])
   }
 
@@ -245,14 +321,14 @@ export default function WorkModal({
         </form>
 
         <section className="work-music-section" aria-label="關聯音樂">
-          <header><div><small>RELATED MUSIC</small><h2>關聯音樂</h2></div><strong>{relatedSongs.length} 首</strong></header>
-          {work && <TagFilters tags={availableTags} activeTag={activeTag} onChange={setActiveTag} editMode={editMode} selectedCount={selectedSongIds.length} allSelected={allDisplayedSelected} onToggleEditMode={() => { setEditMode((current) => !current); if (editMode) setSelectedSongIds([]) }} onEditTags={onEditTags} onSelectAll={toggleSelectAll} onDeleteSelected={() => onDeleteSelectedSongs(selectedSongIds, () => { setSelectedSongIds([]); setEditMode(false) })} sort={sort} onSortChange={setSort} cardSize={cardSize} onCardSizeChange={setCardSize} pageSize={pageSize} onPageSizeChange={setPageSize} resultCount={relatedSongs.length} />}
-          {work && relatedSongs.length ? (
-            <div className={`song-grid view-${cardSize}`}>{displayedSongs.map((song) => <SongCard key={song.id} song={song} work={work} tagLabels={tagLabels} onEdit={() => onEditSong(song)} onDelete={() => onDeleteSong(song)} onPlay={() => onPlaySong(song)} onToggleFavorite={() => onToggleFavorite(song)} onOpenWork={() => {}} selectionMode={editMode} selected={selectedSongIds.includes(song.id)} onToggleSelect={(id) => setSelectedSongIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} />)}</div>
+          <header><div><small>RELATED MUSIC</small><h2>關聯音樂</h2></div><strong>{listResultCount} 首</strong></header>
+          {work && <TagFilters tags={availableTags} activeTag={activeTag} onChange={setActiveTag} editMode={editMode} selectedCount={selectedSongIds.length} allSelected={allDisplayedSelected} onToggleEditMode={() => { setEditMode((current) => !current); if (editMode) setSelectedSongIds([]) }} onEditTags={onEditTags} onSelectAll={toggleSelectAll} onDeleteSelected={() => onDeleteSelectedSongs(selectedSongIds, () => { setSelectedSongIds([]); setEditMode(false) })} sort={sort} onSortChange={setSort} cardSize={cardSize} onCardSizeChange={setCardSize} pageSize={pageSize} onPageSizeChange={setPageSize} resultCount={listResultCount} />}
+          {work && (remoteFirestore ? workSongPageLoading || songsForList.length > 0 : relatedSongs.length > 0) ? (
+            <div className={`song-grid view-${cardSize}${remoteFirestore && workSongPageLoading ? ' is-loading' : ''}`}>{songsForList.map((song) => <SongCard key={song.id} song={song} work={work} tagLabels={tagLabels} onEdit={() => onEditSong(song)} onDelete={() => onDeleteSong(song)} onPlay={() => onPlaySong(song)} onToggleFavorite={() => onToggleFavorite(song)} onOpenWork={() => {}} selectionMode={editMode} selected={selectedSongIds.includes(song.id)} onToggleSelect={(id) => setSelectedSongIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} />)}</div>
           ) : (
             <div className="work-music-empty"><p>{work ? '這個作品還沒有關聯音樂。' : '建立作品後，可在歌曲編輯頁將音樂關聯到這裡。'}</p></div>
           )}
-          {work && pageCount > 1 && <nav className="pagination" aria-label="關聯音樂分頁"><button type="button" aria-label="上一頁" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => page - 1)}><FiChevronLeft /></button><span>{currentPage} / {pageCount}</span><button type="button" aria-label="下一頁" disabled={currentPage === pageCount} onClick={() => setCurrentPage((page) => page + 1)}><FiChevronRight /></button></nav>}
+          {work && listPageCount > 1 && <nav className="pagination" aria-label="關聯音樂分頁"><button type="button" aria-label="上一頁" disabled={!listHasPrev} onClick={goListPrevPage}><FiChevronLeft /></button><span>{listCurrentPage} / {listPageCount}</span><button type="button" aria-label="下一頁" disabled={!listHasNext} onClick={goListNextPage}><FiChevronRight /></button></nav>}
         </section>
       </section>
     </div>

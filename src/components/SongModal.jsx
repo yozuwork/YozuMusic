@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FiCheck, FiClipboard, FiEdit3, FiExternalLink, FiImage, FiLink, FiPlus, FiX } from 'react-icons/fi'
+import { FiCheck, FiChevronDown, FiClipboard, FiEdit3, FiExternalLink, FiImage, FiLink, FiPlus, FiX } from 'react-icons/fi'
 import { MOOD_TAGS, SONG_CATEGORIES } from '../data/initialSongs.js'
 import { getAutoCover, getBilibiliVideoKey, getLinkMetadata, getPlatform, isWebUrl, parseMusicShareText } from '../utils/songLinks.js'
 import { compressCoverImage } from '../utils/compressCoverImage.js'
+import WorkPickerModal from './WorkPickerModal.jsx'
 
 const emptyForm = {
   url: '',
@@ -51,6 +52,7 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
   const [metadataStatus, setMetadataStatus] = useState('idle')
   const [isProcessingCover, setIsProcessingCover] = useState(false)
   const [isCoverFocused, setIsCoverFocused] = useState(false)
+  const [isWorkPickerOpen, setIsWorkPickerOpen] = useState(false)
   const fileInputRef = useRef(null)
 
   const applyCoverFile = useCallback(async (file) => {
@@ -80,6 +82,7 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
     } : emptyForm)
     setError('')
     setMetadataStatus('idle')
+    setIsWorkPickerOpen(false)
   }, [open, song])
 
   useEffect(() => {
@@ -122,10 +125,13 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
 
   useEffect(() => {
     if (!open) return undefined
-    const handleKeyDown = (event) => event.key === 'Escape' && onClose()
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape' || isWorkPickerOpen) return
+      onClose()
+    }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
+  }, [open, onClose, isWorkPickerOpen])
 
   useEffect(() => {
     if (!open) return undefined
@@ -237,6 +243,7 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
   if (!open) return null
 
   return (
+    <>
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="song-modal" role="dialog" aria-modal="true" aria-labelledby="song-modal-title">
         <button className="modal-close" type="button" aria-label="關閉" onClick={onClose}><FiX /></button>
@@ -303,19 +310,16 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
             <input id="song-artist" name="artist" value={form.artist} placeholder="例如：生物股長" onChange={updateField} />
           </div>
           <div className="form-field full-width">
-            <label htmlFor="song-work">關聯作品</label>
-            <select
-              id="song-work"
-              value={form.workId}
-              onChange={(event) => {
-                const workId = event.target.value
-                const matchedWork = works.find((work) => work.id === workId)
-                setForm((current) => ({ ...current, workId, workTitle: matchedWork?.title || '' }))
-              }}
+            <label htmlFor="song-work-trigger">關聯作品</label>
+            <button
+              id="song-work-trigger"
+              type="button"
+              className="work-picker-trigger"
+              onClick={() => setIsWorkPickerOpen(true)}
             >
-              <option value="">不關聯作品</option>
-              {works.map((work) => <option key={work.id} value={work.id}>{work.title}（{work.type}）</option>)}
-            </select>
+              <span>{form.workTitle || '選擇作品'}</span>
+              <FiChevronDown aria-hidden="true" />
+            </button>
             <small>請先在「作品」區建立作品，再將歌曲關聯到對應作品。</small>
           </div>
           <div className="form-field full-width">
@@ -339,5 +343,13 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
         </form>
       </section>
     </div>
+    <WorkPickerModal
+      open={isWorkPickerOpen}
+      works={works}
+      selectedWorkId={form.workId}
+      onClose={() => setIsWorkPickerOpen(false)}
+      onApply={(workId, workTitle) => setForm((current) => ({ ...current, workId, workTitle }))}
+    />
+    </>
   )
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { get, onValue, ref, set, update } from 'firebase/database'
 import { INITIAL_SONGS, SONG_CATEGORIES } from '../data/initialSongs.js'
-import { database, firebaseReady } from '../lib/firebase.js'
+import { USE_FIRESTORE, firebaseReady } from '../lib/firebase.js'
+import { addSong as addSongFirestore, deleteSong as deleteSongFirestore, updateSong as updateSongFirestore } from '../lib/firestore/songsApi.js'
+import { rtdbGet, rtdbUpdate, rtdbSet } from '../lib/realtimeDbRest.js'
 
 const STORAGE_KEY = 'yozu-music-library-v1'
 const DATABASE_PATH = 'yozuMusic/songs'
@@ -41,31 +42,28 @@ function readSongs() {
 
 export default function useSongLibrary(allowRemote = false) {
   const [songs, setSongs] = useState(readSongs)
+  const remoteFirestore = allowRemote && USE_FIRESTORE
 
   useEffect(() => {
-    if (!firebaseReady || !allowRemote) {
+    if (!firebaseReady || !allowRemote || remoteFirestore) {
       return undefined
     }
 
-    const songsRef = ref(database, DATABASE_PATH)
-    return onValue(songsRef, (snapshot) => {
-      console.log('[YozuMusic][Firebase] 收到歌曲同步', {
-        exists: snapshot.exists(),
-        count: snapshot.exists() ? Object.keys(snapshot.val() || {}).length : 0,
+    let cancelled = false
+    rtdbGet(DATABASE_PATH).then((value) => {
+      if (cancelled) return
+      console.log('[YozuMusic][Firebase REST] 收到歌曲同步', {
+        exists: Boolean(value),
+        count: value ? Object.keys(value).length : 0,
       })
-      if (!snapshot.exists()) {
-        setSongs([])
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
-        return
-      }
-
-      const nextSongs = normalizeSongs(snapshot.val())
+      const nextSongs = normalizeSongs(value)
       setSongs(nextSongs)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSongs))
-    }, (error) => {
+    }).catch((error) => {
       console.error('無法讀取 Firebase 歌曲資料：', error)
     })
-  }, [allowRemote])
+    return () => { cancelled = true }
+  }, [allowRemote, remoteFirestore])
 
   function updateLocal(updater) {
     setSongs((current) => {
@@ -81,7 +79,9 @@ export default function useSongLibrary(allowRemote = false) {
       updateLocal((current) => [nextSong, ...current])
       return nextSong
     }
-    await set(ref(database, `${DATABASE_PATH}/${nextSong.id}`), nextSong)
+    if (remoteFirestore) return addSongFirestore(nextSong)
+    await rtdbSet(`${DATABASE_PATH}/${nextSong.id}`, nextSong)
+    updateLocal((current) => [nextSong, ...current])
     return nextSong
   }
 
@@ -90,36 +90,32 @@ export default function useSongLibrary(allowRemote = false) {
       updateLocal((current) => current.map((song) => (song.id === id ? { ...song, ...changes } : song)))
       return
     }
-    await update(ref(database, `${DATABASE_PATH}/${id}`), changes)
+    if (remoteFirestore) return updateSongFirestore(id, changes)
+    await rtdbUpdate(`${DATABASE_PATH}/${id}`, changes)
+    updateLocal((current) => current.map((song) => (song.id === id ? { ...song, ...changes } : song)))
   }
 
   async function deleteSong(id) {
-    console.log('[YozuMusic][Delete] 開始刪除', {
-      id,
-      firebaseReady,
-      allowRemote,
-      target: `${DATABASE_PATH}/${id}`,
-    })
     if (!firebaseReady || !allowRemote) {
-      console.warn('[YozuMusic][Delete] 使用本機模式刪除', { id })
       updateLocal((current) => current.filter((song) => song.id !== id))
       return
     }
-    const songRef = ref(database, `${DATABASE_PATH}/${id}`)
-    await update(ref(database, 'yozuMusic'), {
+    if (remoteFirestore) return deleteSongFirestore(id)
+
+    await rtdbUpdate('yozuMusic', {
       [`deletedSongs/${id}`]: { deletedAt: new Date().toISOString() },
       [`songs/${id}`]: null,
     })
-    console.log('[YozuMusic][Delete] Firebase 原子刪除與墓碑寫入已完成', { id })
 
-    const verification = await get(songRef)
-    console.log('[YozuMusic][Delete] Firebase 回讀驗證', { id, exists: verification.exists() })
-    if (verification.exists()) {
+    const verification = await rtdbGet(`${DATABASE_PATH}/${id}`)
+    if (verification) {
       const verificationError = new Error(`Firebase 節點 ${id} 在刪除後仍然存在`)
       verificationError.code = 'delete-verification-failed'
       throw verificationError
     }
+
+    updateLocal((current) => current.filter((song) => song.id !== id))
   }
 
-  return { songs, addSong, updateSong, deleteSong }
+  return { songs, addSong, updateSong, deleteSong, remoteFirestore }
 }

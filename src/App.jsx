@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FiChevronLeft, FiChevronRight, FiDisc, FiHeart, FiMusic, FiPlus, FiPlusCircle, FiSettings, FiSliders, FiTag, FiX } from 'react-icons/fi'
 import ActionModal from './components/ActionModal.jsx'
 import AuthGate from './components/AuthGate.jsx'
@@ -15,13 +15,16 @@ import useFirebaseAuth, { OWNER_UID } from './hooks/useFirebaseAuth.js'
 import useSongLibrary from './hooks/useSongLibrary.js'
 import useTagLibrary from './hooks/useTagLibrary.js'
 import useWorkLibrary from './hooks/useWorkLibrary.js'
+import { fetchSongsByWorkId, fetchSongsCount, fetchSongsPage } from './lib/firestore/songsApi.js'
 import './App.css'
 import { categoryUrl, readRoute } from './utils/routes.js'
+
+const SEARCH_DEBOUNCE_MS = 350
 
 function App() {
   const { user, loading: authLoading, error: authError, login, logout } = useFirebaseAuth()
   const isOwner = user?.uid === OWNER_UID
-  const { songs, addSong, updateSong, deleteSong } = useSongLibrary(isOwner)
+  const { songs, addSong, updateSong, deleteSong, remoteFirestore } = useSongLibrary(isOwner)
   const { tagsBySection, setSectionTags } = useTagLibrary(isOwner)
   const { works, addWork, updateWork } = useWorkLibrary(isOwner)
   const [route, setRoute] = useState(() => readRoute(window.location.pathname))
@@ -64,6 +67,73 @@ function App() {
   const [highlightedWorkId, setHighlightedWorkId] = useState('')
   const [activeWorkType, setActiveWorkType] = useState('all')
 
+  // Firestore 模式下的歌曲分頁（真正呼叫 API 取當頁資料，取代下面 visibleSongs/displayedSongs 的整包前端切片）
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [songPageIndex, setSongPageIndex] = useState(0)
+  const [songPageItems, setSongPageItems] = useState([])
+  const [songHasNextPage, setSongHasNextPage] = useState(false)
+  const [songTotalCount, setSongTotalCount] = useState(0)
+  const [songPageLoading, setSongPageLoading] = useState(false)
+  const songCursorsRef = useRef([null])
+  const songFilterKeyRef = useRef('')
+  const favoriteOnly = mobileView === 'favorites'
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim().toLowerCase()), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    if (!remoteFirestore || activeCategory === '作品') return undefined
+
+    const filterKey = JSON.stringify({ activeCategory, activeTag, favoriteOnly, debouncedSearch, sort, pageSize })
+    let pageIndexToUse = songPageIndex
+    if (songFilterKeyRef.current !== filterKey) {
+      songFilterKeyRef.current = filterKey
+      songCursorsRef.current = [null]
+      pageIndexToUse = 0
+      if (songPageIndex !== 0) {
+        setSongPageIndex(0)
+        return undefined
+      }
+    }
+
+    let cancelled = false
+    setSongPageLoading(true)
+    fetchSongsPage({
+      category: activeCategory,
+      tag: activeTag,
+      favoriteOnly,
+      searchPrefix: debouncedSearch,
+      sort,
+      pageSize,
+      cursor: songCursorsRef.current[pageIndexToUse] ?? null,
+    }).then(({ items, lastDoc, hasMore }) => {
+      if (cancelled) return
+      setSongPageItems(items)
+      setSongHasNextPage(hasMore)
+      if (!songCursorsRef.current[pageIndexToUse + 1]) {
+        songCursorsRef.current = [...songCursorsRef.current.slice(0, pageIndexToUse + 1), lastDoc]
+      }
+    }).catch((error) => {
+      console.error('無法讀取歌曲分頁：', error)
+    }).finally(() => {
+      if (!cancelled) setSongPageLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [remoteFirestore, activeCategory, activeTag, favoriteOnly, debouncedSearch, sort, pageSize, songPageIndex])
+
+  useEffect(() => {
+    if (!remoteFirestore || activeCategory === '作品') return undefined
+    let cancelled = false
+    fetchSongsCount({ category: activeCategory, tag: activeTag, favoriteOnly, searchPrefix: debouncedSearch })
+      .then((count) => { if (!cancelled) setSongTotalCount(count) })
+      .catch((error) => console.error('無法讀取歌曲總數：', error))
+    return () => { cancelled = true }
+  }, [remoteFirestore, activeCategory, activeTag, favoriteOnly, debouncedSearch])
+
+  const songTotalPages = pageSize === 'flow' ? 1 : Math.max(1, Math.ceil(songTotalCount / Number(pageSize)))
+
   const visibleSongs = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('zh-Hant')
     const result = songs.filter((song) => {
@@ -85,20 +155,16 @@ function App() {
   }, [activeCategory, activeTag, mobileView, search, songs, sort])
 
   const visibleWorks = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('zh-Hant')
+    const query = search.trim().toLowerCase()
     return works
       .filter((work) => {
         if (activeWorkType !== 'all' && work.type !== activeWorkType) return false
-        const linkedSongs = songs.filter((song) => song.workId === work.id || (!song.workId && song.workTitle === work.title))
-        return [work.title, ...linkedSongs.flatMap((song) => [song.title, song.artist])]
-          .join(' ')
-          .toLocaleLowerCase('zh-Hant')
-          .includes(query)
+        return !query || work.title.toLowerCase().startsWith(query)
       })
       .sort((a, b) => sort === 'title'
         ? a.title.localeCompare(b.title, 'zh-Hant')
         : (b.createdAt || '').localeCompare(a.createdAt || ''))
-  }, [activeWorkType, search, songs, sort, works])
+  }, [activeWorkType, search, sort, works])
 
   const pageCount = pageSize === 'flow' ? 1 : Math.max(1, Math.ceil(visibleSongs.length / Number(pageSize)))
   const displayedSongs = useMemo(() => {
@@ -106,7 +172,24 @@ function App() {
     const start = (currentPage - 1) * Number(pageSize)
     return visibleSongs.slice(start, start + Number(pageSize))
   }, [currentPage, pageSize, visibleSongs])
-  const allDisplayedSelected = displayedSongs.length > 0 && displayedSongs.every((song) => selectedSongIds.includes(song.id))
+
+  // remoteFirestore 時，歌曲網格改用上面 Firestore 分頁抓回來的 songPageItems，不再用本地整包切片
+  const songsForGrid = remoteFirestore ? songPageItems : displayedSongs
+  const songResultCount = remoteFirestore ? songTotalCount : visibleSongs.length
+  const songNavPageCount = remoteFirestore ? songTotalPages : pageCount
+  const songNavCurrentPage = remoteFirestore ? songPageIndex + 1 : currentPage
+  const songNavHasPrev = remoteFirestore ? songPageIndex > 0 : currentPage > 1
+  const songNavHasNext = remoteFirestore ? songHasNextPage : currentPage < pageCount
+  function goSongPrevPage() {
+    if (remoteFirestore) setSongPageIndex((index) => index - 1)
+    else setCurrentPage((page) => page - 1)
+  }
+  function goSongNextPage() {
+    if (remoteFirestore) setSongPageIndex((index) => index + 1)
+    else setCurrentPage((page) => page + 1)
+  }
+
+  const allDisplayedSelected = songsForGrid.length > 0 && songsForGrid.every((song) => selectedSongIds.includes(song.id))
   const workPageCount = pageSize === 'flow' ? 1 : Math.max(1, Math.ceil(visibleWorks.length / Number(pageSize)))
   const displayedWorks = pageSize === 'flow'
     ? visibleWorks
@@ -127,7 +210,7 @@ function App() {
 
   useEffect(() => {
     setSelectedSongIds([])
-  }, [activeCategory, activeTag, currentPage, mobileView, pageSize, search, sort])
+  }, [activeCategory, activeTag, currentPage, songPageIndex, mobileView, pageSize, search, sort])
 
   function openAdd() {
     setEditingSong(null)
@@ -190,7 +273,10 @@ function App() {
       const currentWork = workModalOpen ? editingWork : routeWork
       if (currentWork) {
         await updateWork(currentWork.id, work)
-        await Promise.all(songs.filter((song) => song.workId === currentWork.id && song.workTitle !== work.title).map((song) => updateSong(song.id, { workTitle: work.title })))
+        const linkedSongs = remoteFirestore
+          ? await fetchSongsByWorkId(currentWork.id)
+          : songs.filter((song) => song.workId === currentWork.id)
+        await Promise.all(linkedSongs.filter((song) => song.workTitle !== work.title).map((song) => updateSong(song.id, { workTitle: work.title })))
         savedWork = { ...currentWork, ...work }
       } else {
         savedWork = await addWork(work)
@@ -205,18 +291,17 @@ function App() {
   }
 
   function removeWorkSongs(songIds, onComplete) {
-    const targets = songs.filter((song) => songIds.includes(song.id))
-    if (!targets.length) return
+    if (!songIds.length) return
     setActionModal({
       mode: 'confirm',
-      title: `刪除 ${targets.length} 首關聯音樂？`,
+      title: `刪除 ${songIds.length} 首關聯音樂？`,
       message: '這會從音樂庫刪除選取的卡片，刪除後無法復原。',
-      confirmText: `刪除 ${targets.length} 首`,
+      confirmText: `刪除 ${songIds.length} 首`,
       onConfirm: async () => {
         try {
-          await Promise.all(targets.map((song) => deleteSong(song.id)))
+          await Promise.all(songIds.map((id) => deleteSong(id)))
           onComplete?.()
-          setActionModal({ mode: 'success', title: '刪除完成', message: `已移除 ${targets.length} 首音樂。` })
+          setActionModal({ mode: 'success', title: '刪除完成', message: `已移除 ${songIds.length} 首音樂。` })
         } catch {
           setActionModal({ mode: 'error', title: '刪除失敗', message: '目前無法刪除選取的音樂。' })
         }
@@ -263,7 +348,7 @@ function App() {
   }
 
   function toggleSelectAll() {
-    const displayedIds = displayedSongs.map((song) => song.id)
+    const displayedIds = songsForGrid.map((song) => song.id)
     setSelectedSongIds((current) => allDisplayedSelected
       ? current.filter((id) => !displayedIds.includes(id))
       : [...new Set([...current, ...displayedIds])])
@@ -366,6 +451,7 @@ function App() {
             page
             work={routeWork}
             songs={songs}
+            remoteFirestore={remoteFirestore}
             tags={currentTags}
             onClose={() => setActiveCategory('作品')}
             onSave={saveWork}
@@ -428,7 +514,7 @@ function App() {
           onCardSizeChange={setCardSize}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          resultCount={visibleSongs.length}
+          resultCount={songResultCount}
         />}
 
         <section className="library-section">
@@ -440,7 +526,7 @@ function App() {
                     key={work.id}
                     work={work}
                     highlighted={highlightedWorkId === work.id}
-                    songCount={songs.filter((song) => song.workId === work.id || (!song.workId && song.workTitle === work.title)).length}
+                    songCount={typeof work.songCount === 'number' ? work.songCount : songs.filter((song) => song.workId === work.id || (!song.workId && song.workTitle === work.title)).length}
                     onOpen={() => openWorkEdit(work)}
                   />
                 ))}
@@ -453,9 +539,9 @@ function App() {
                 <button type="button" onClick={openWorkAdd}><FiPlus /> 新增作品卡片</button>
               </div>
             )
-          ) : visibleSongs.length ? (
-            <div className={`song-grid view-${cardSize}`}>
-              {displayedSongs.map((song) => (
+          ) : (remoteFirestore ? songPageLoading || songsForGrid.length > 0 : visibleSongs.length > 0) ? (
+            <div className={`song-grid view-${cardSize}${remoteFirestore && songPageLoading ? ' is-loading' : ''}`}>
+              {songsForGrid.map((song) => (
                 <SongCard
                   key={song.id}
                   song={song}
@@ -481,11 +567,11 @@ function App() {
             </div>
           )}
 
-          {activeCategory !== '作品' && pageCount > 1 && (
+          {activeCategory !== '作品' && songNavPageCount > 1 && (
             <nav className="pagination" aria-label="歌曲分頁">
-              <button type="button" aria-label="上一頁" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => page - 1)}><FiChevronLeft /></button>
-              <span>{currentPage} / {pageCount}</span>
-              <button type="button" aria-label="下一頁" disabled={currentPage === pageCount} onClick={() => setCurrentPage((page) => page + 1)}><FiChevronRight /></button>
+              <button type="button" aria-label="上一頁" disabled={!songNavHasPrev} onClick={goSongPrevPage}><FiChevronLeft /></button>
+              <span>{songNavCurrentPage} / {songNavPageCount}</span>
+              <button type="button" aria-label="下一頁" disabled={!songNavHasNext} onClick={goSongNextPage}><FiChevronRight /></button>
             </nav>
           )}
           {activeCategory === '作品' && workPageCount > 1 && (
@@ -506,6 +592,7 @@ function App() {
         open={workModalOpen}
         work={editingWork}
         songs={songs}
+        remoteFirestore={remoteFirestore}
         tags={tagsBySection['作品'] || []}
         onClose={closeWorkModal}
         onSave={saveWork}

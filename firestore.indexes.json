@@ -1,0 +1,71 @@
+{
+  "indexes": [
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "title", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "favorite", "order": "DESCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "favorite", "order": "ASCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "favorite", "order": "ASCENDING" },
+      { "fieldPath": "title", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "favorite", "order": "DESCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "favorite", "order": "ASCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "favorite", "order": "ASCENDING" },
+      { "fieldPath": "title", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "titleLower", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "favorite", "order": "ASCENDING" },
+      { "fieldPath": "titleLower", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "favorite", "order": "ASCENDING" },
+      { "fieldPath": "titleLower", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "workId", "order": "ASCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "workId", "order": "ASCENDING" },
+      { "fieldPath": "title", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "workId", "order": "ASCENDING" },
+      { "fieldPath": "favorite", "order": "DESCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "songs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "workId", "order": "ASCENDING" },
+      { "fieldPath": "tags", "arrayConfig": "CONTAINS" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]}
+  ],
+  "fieldOverrides": []
+}

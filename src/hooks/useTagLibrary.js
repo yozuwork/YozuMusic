@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { onValue, ref, set, update } from 'firebase/database'
 import { buildTagUpdates } from '../utils/tagSync.js'
 import { MAIN_CATEGORIES, MOOD_TAGS } from '../data/initialSongs.js'
-import { database, firebaseReady } from '../lib/firebase.js'
+import { USE_FIRESTORE, firebaseReady } from '../lib/firebase.js'
+import { subscribeTags, writeTagSections } from '../lib/firestore/tagsApi.js'
+import { rtdbGet, rtdbSet, rtdbUpdate } from '../lib/realtimeDbRest.js'
 
 const STORAGE_KEY = 'yozu-music-tags-v1'
 const DATABASE_PATH = 'yozuMusic/tags'
@@ -27,28 +28,41 @@ function readTags() {
 
 export default function useTagLibrary(allowRemote = false) {
   const [tagsBySection, setTagsBySection] = useState(readTags)
+  const remoteFirestore = allowRemote && USE_FIRESTORE
 
   useEffect(() => {
     if (!firebaseReady || !allowRemote) {
       return undefined
     }
 
-    const tagsRef = ref(database, DATABASE_PATH)
-    return onValue(tagsRef, (snapshot) => {
-      if (!snapshot.exists()) {
-        set(tagsRef, readTags()).catch((error) => console.error('無法初始化 Firebase 標籤資料：', error))
+    if (remoteFirestore) {
+      return subscribeTags((sections) => {
+        const defaults = initialTags()
+        const nextTags = Object.fromEntries(SECTIONS.map((section) => [section, sections[section] || defaults[section]]))
+        setTagsBySection(nextTags)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTags))
+      }, (error) => {
+        console.error('無法讀取 Firestore 標籤資料：', error)
+      })
+    }
+
+    let cancelled = false
+    rtdbGet(DATABASE_PATH).then((value) => {
+      if (cancelled) return
+      if (!value) {
+        rtdbSet(DATABASE_PATH, readTags()).catch((error) => console.error('無法初始化 Firebase 標籤資料：', error))
         return
       }
 
       const defaults = initialTags()
-      const value = snapshot.val() || {}
       const nextTags = Object.fromEntries(SECTIONS.map((section) => [section, value[section] === false ? [] : value[section] || defaults[section]]))
       setTagsBySection(nextTags)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTags))
-    }, (error) => {
+    }).catch((error) => {
       console.error('無法讀取 Firebase 標籤資料：', error)
     })
-  }, [allowRemote])
+    return () => { cancelled = true }
+  }, [allowRemote, remoteFirestore])
 
   async function setSectionTags(section, tags, additions = []) {
     const updates = buildTagUpdates(tagsBySection, section, tags, additions)
@@ -60,9 +74,18 @@ export default function useTagLibrary(allowRemote = false) {
       })
       return Object.keys(updates)
     }
-    await update(ref(database, DATABASE_PATH), Object.fromEntries(
+    if (remoteFirestore) {
+      await writeTagSections(updates)
+      return Object.keys(updates)
+    }
+    await rtdbUpdate(DATABASE_PATH, Object.fromEntries(
       Object.entries(updates).map(([key, value]) => [key, value.length ? value : false]),
     ))
+    setTagsBySection((current) => {
+      const next = { ...current, ...updates }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
     return Object.keys(updates)
   }
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { onValue, ref, set, update } from 'firebase/database'
 import { INITIAL_SONGS } from '../data/initialSongs.js'
-import { database, firebaseReady } from '../lib/firebase.js'
+import { USE_FIRESTORE, firebaseReady } from '../lib/firebase.js'
+import { addWork as addWorkFirestore, subscribeWorks, updateWork as updateWorkFirestore } from '../lib/firestore/worksApi.js'
+import { rtdbGet, rtdbSet, rtdbUpdate } from '../lib/realtimeDbRest.js'
 
 const STORAGE_KEY = 'yozu-music-works-v1'
 const DATABASE_PATH = 'yozuMusic/works'
@@ -56,25 +57,32 @@ function readWorks() {
 
 export default function useWorkLibrary(allowRemote = false) {
   const [works, setWorks] = useState(readWorks)
+  const remoteFirestore = allowRemote && USE_FIRESTORE
 
   useEffect(() => {
     if (!firebaseReady || !allowRemote) return undefined
 
-    const worksRef = ref(database, DATABASE_PATH)
-    return onValue(worksRef, (snapshot) => {
-      if (!snapshot.exists()) {
-        setWorks([])
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
-        return
-      }
-
-      const nextWorks = normalizeWorks(snapshot.val())
+    function handleNext(nextWorksRaw) {
+      const nextWorks = normalizeWorks(nextWorksRaw)
       setWorks(nextWorks)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextWorks))
-    }, (error) => {
+    }
+
+    if (remoteFirestore) {
+      return subscribeWorks(handleNext, (error) => {
+        console.error('無法讀取 Firestore 作品資料：', error)
+      })
+    }
+
+    let cancelled = false
+    rtdbGet(DATABASE_PATH).then((value) => {
+      if (cancelled) return
+      handleNext(value)
+    }).catch((error) => {
       console.error('無法讀取 Firebase 作品資料：', error)
     })
-  }, [allowRemote])
+    return () => { cancelled = true }
+  }, [allowRemote, remoteFirestore])
 
   function updateLocal(updater) {
     setWorks((current) => {
@@ -98,7 +106,9 @@ export default function useWorkLibrary(allowRemote = false) {
       updateLocal((current) => [nextWork, ...current])
       return nextWork
     }
-    await set(ref(database, `${DATABASE_PATH}/${nextWork.id}`), nextWork)
+    if (remoteFirestore) return addWorkFirestore(nextWork)
+    await rtdbSet(`${DATABASE_PATH}/${nextWork.id}`, nextWork)
+    updateLocal((current) => [nextWork, ...current])
     return nextWork
   }
 
@@ -107,7 +117,9 @@ export default function useWorkLibrary(allowRemote = false) {
       updateLocal((current) => current.map((work) => work.id === id ? { ...work, ...changes } : work))
       return
     }
-    await update(ref(database, `${DATABASE_PATH}/${id}`), changes)
+    if (remoteFirestore) return updateWorkFirestore(id, changes)
+    await rtdbUpdate(`${DATABASE_PATH}/${id}`, changes)
+    updateLocal((current) => current.map((work) => work.id === id ? { ...work, ...changes } : work))
   }
 
   return { works, addWork, updateWork }
