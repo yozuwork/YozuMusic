@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { FiHeadphones, FiLogOut, FiPlus, FiSearch } from 'react-icons/fi'
+import { FiHeadphones, FiLogOut, FiPlus, FiSearch, FiSettings } from 'react-icons/fi'
 import CategoryTabs from './CategoryTabs.jsx'
 import { categoryUrl } from '../utils/routes.js'
 
 const MIGRATION_ENABLED = import.meta.env.VITE_ENABLE_MIGRATION === 'true'
 
-export default function Header({ user, onLogout, search, onSearchChange, onAdd, addLabel = '貼上音樂', theme, onThemeChange, categories, activeCategory, songs, workCount, onCategoryChange }) {
+export default function Header({ user, onLogout, search, onSearchChange, onAdd, addLabel = '貼上音樂', theme, onThemeChange, categories, activeCategory, songs, workCount, onCategoryChange, onOpenSettings }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const [migrationStatus, setMigrationStatus] = useState('idle')
   const accountRef = useRef(null)
@@ -84,6 +84,12 @@ export default function Header({ user, onLogout, search, onSearchChange, onAdd, 
         <button className={theme === 'green' ? 'active' : ''} type="button" aria-label="使用綠色主色" aria-pressed={theme === 'green'} onClick={() => onThemeChange('green')}><i className="green" /></button>
         <button className={theme === 'pink' ? 'active' : ''} type="button" aria-label="使用粉紅色主色" aria-pressed={theme === 'pink'} onClick={() => onThemeChange('pink')}><i className="pink" /></button>
       </div>
+
+      {onOpenSettings && (
+        <button className="mobile-settings-trigger" type="button" aria-label="開啟設定" onClick={onOpenSettings}>
+          <FiSettings aria-hidden="true" />
+        </button>
+      )}
 
       <label className="header-search">
         <FiSearch aria-hidden="true" />

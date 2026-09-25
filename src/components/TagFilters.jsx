@@ -1,4 +1,5 @@
-import { FiCheckSquare, FiEdit3, FiSliders, FiTag, FiTrash2, FiX } from 'react-icons/fi'
+import { FiCheckSquare, FiEdit3, FiHeart, FiSliders, FiTag, FiTrash2, FiX } from 'react-icons/fi'
+import MobileViewToggle from './MobileViewToggle.jsx'
 
 export default function TagFilters({
   tags,
@@ -18,11 +19,23 @@ export default function TagFilters({
   pageSize,
   onPageSizeChange,
   resultCount,
+  favoriteOnly,
+  onToggleFavoriteOnly,
 }) {
   return (
     <div className="filter-row">
       <div className="tag-filter" aria-label="歌曲感覺篩選">
         <span className="filter-label">MOOD</span>
+        {onToggleFavoriteOnly && (
+          <button
+            type="button"
+            className={favoriteOnly ? 'tag-pill fav-pill active' : 'tag-pill fav-pill'}
+            aria-pressed={Boolean(favoriteOnly)}
+            onClick={onToggleFavoriteOnly}
+          >
+            <FiHeart aria-hidden="true" />最愛
+          </button>
+        )}
         <button
           type="button"
           className={!activeTag ? 'tag-pill active' : 'tag-pill'}
@@ -59,6 +72,7 @@ export default function TagFilters({
         {editMode ? <FiX /> : <FiEdit3 />} {editMode ? '完成' : '編輯'}
       </button>
       <strong className="mobile-result-count">{resultCount} 首</strong>
+      <MobileViewToggle cardSize={cardSize} onCardSizeChange={onCardSizeChange} />
       <label className="sort-control">
         <FiSliders aria-hidden="true" />
         <select value={sort} aria-label="排序方式" onChange={(event) => onSortChange(event.target.value)}>

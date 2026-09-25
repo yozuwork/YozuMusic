@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FiChevronLeft, FiChevronRight, FiDisc, FiHeart, FiMusic, FiPlus, FiPlusCircle, FiSettings, FiSliders, FiTag, FiX } from 'react-icons/fi'
+import { FiChevronLeft, FiChevronRight, FiDisc, FiMusic, FiPlus, FiSliders, FiTag, FiX } from 'react-icons/fi'
 import ActionModal from './components/ActionModal.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import Header from './components/Header.jsx'
+import MobileViewToggle from './components/MobileViewToggle.jsx'
 import NowPlaying from './components/NowPlaying.jsx'
 import SongCard from './components/SongCard.jsx'
 import SongModal from './components/SongModal.jsx'
@@ -17,9 +18,11 @@ import useTagLibrary from './hooks/useTagLibrary.js'
 import useWorkLibrary from './hooks/useWorkLibrary.js'
 import { fetchSongsByWorkId, fetchSongsCount, fetchSongsPage } from './lib/firestore/songsApi.js'
 import './App.css'
+import './mobile.css'
 import { categoryUrl, readRoute } from './utils/routes.js'
 
 const SEARCH_DEBOUNCE_MS = 350
+const CARD_SIZE_STORAGE_KEY = 'yozu-music-card-size-v2'
 
 function App() {
   const { user, loading: authLoading, error: authError, login, logout } = useFirebaseAuth()
@@ -49,7 +52,13 @@ function App() {
   const [activeTag, setActiveTag] = useState('')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
-  const [cardSize, setCardSize] = useState('small')
+  const [cardSize, setCardSize] = useState(() => {
+    try {
+      return localStorage.getItem(CARD_SIZE_STORAGE_KEY) || 'medium'
+    } catch {
+      return 'medium'
+    }
+  })
   const [pageSize, setPageSize] = useState('12')
   const [currentPage, setCurrentPage] = useState(1)
   const [theme, setTheme] = useState(() => localStorage.getItem('yozu-music-theme') || 'green')
@@ -207,6 +216,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('yozu-music-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CARD_SIZE_STORAGE_KEY, cardSize)
+    } catch {
+      // 無法寫入 localStorage（例如隱私模式）時就只記在這次瀏覽
+    }
+  }, [cardSize])
 
   useEffect(() => {
     setSelectedSongIds([])
@@ -432,6 +449,7 @@ function App() {
         activeCategory={activeCategory}
         songs={songs}
         workCount={works.length}
+        onOpenSettings={() => setMobileSettingsOpen((open) => !open)}
         onCategoryChange={(category) => {
           setActiveCategory(category)
           setHighlightedWorkId('')
@@ -485,6 +503,7 @@ function App() {
                 <option value="flow">瀑布流</option>
               </select>
             </div>
+            <MobileViewToggle cardSize={cardSize} onCardSizeChange={setCardSize} />
             <label className="sort-control">
               <FiSliders aria-hidden="true" />
               <select value={sort === 'title' ? 'title' : 'newest'} aria-label="作品排序方式" onChange={(event) => setSort(event.target.value)}>
@@ -498,6 +517,8 @@ function App() {
           </div>
         )}
         {activeCategory !== '作品' && <TagFilters
+          favoriteOnly={favoriteOnly}
+          onToggleFavoriteOnly={() => setMobileView((view) => view === 'favorites' ? 'library' : 'favorites')}
           tags={currentTags}
           activeTag={activeTag}
           onChange={setActiveTag}
@@ -633,23 +654,46 @@ function App() {
       />
 
       {mobileSettingsOpen && (
-        <aside className="mobile-settings-panel" aria-label="手機版設定">
-          <header><strong>設定</strong><button type="button" aria-label="關閉設定" onClick={() => setMobileSettingsOpen(false)}><FiX /></button></header>
-          <div>
-            <span>主色</span>
-            <button className={theme === 'green' ? 'selected' : ''} type="button" onClick={() => setTheme('green')}><i className="green" /> 綠色</button>
-            <button className={theme === 'pink' ? 'selected' : ''} type="button" onClick={() => setTheme('pink')}><i className="pink" /> 莓果粉</button>
-          </div>
-          <button className="mobile-edit-tags" type="button" onClick={() => { setMobileSettingsOpen(false); setEditMode(true); setSelectedSongIds([]) }}>編輯卡片與標籤</button>
-        </aside>
+        <>
+          <div className="mobile-sheet-backdrop" onClick={() => setMobileSettingsOpen(false)} />
+          <aside className="mobile-settings-panel" role="dialog" aria-modal="true" aria-label="設定">
+            <header><strong>設定</strong><button type="button" aria-label="關閉設定" onClick={() => setMobileSettingsOpen(false)}><FiX /></button></header>
+            <section className="sheet-group">
+              <h3>卡片樣式</h3>
+              <div className="sheet-segmented" role="group">
+                {[['small', '清單'], ['medium', '雙欄'], ['large', '大圖']].map(([value, label]) => (
+                  <button key={value} type="button" className={cardSize === value ? 'selected' : ''} aria-pressed={cardSize === value} onClick={() => setCardSize(value)}>{label}</button>
+                ))}
+              </div>
+            </section>
+            <section className="sheet-group">
+              <h3>每頁顯示</h3>
+              <div className="sheet-segmented" role="group">
+                {[['12', '12'], ['36', '36'], ['48', '48'], ['flow', '全部']].map(([value, label]) => (
+                  <button key={value} type="button" className={pageSize === value ? 'selected' : ''} aria-pressed={pageSize === value} onClick={() => setPageSize(value)}>{label}</button>
+                ))}
+              </div>
+            </section>
+            <section className="sheet-group">
+              <h3>主色</h3>
+              <div className="sheet-segmented" role="group">
+                <button type="button" className={theme === 'green' ? 'selected' : ''} aria-pressed={theme === 'green'} onClick={() => setTheme('green')}><i className="swatch green" />綠色</button>
+                <button type="button" className={theme === 'pink' ? 'selected' : ''} aria-pressed={theme === 'pink'} onClick={() => setTheme('pink')}><i className="swatch pink" />莓果粉</button>
+              </div>
+            </section>
+            <section className="sheet-actions">
+              {activeCategory !== '作品' && (
+                <button type="button" onClick={() => { setMobileSettingsOpen(false); setEditMode(true); setSelectedSongIds([]) }}>選取多首歌曲</button>
+              )}
+              <button type="button" onClick={() => { setMobileSettingsOpen(false); setTagEditorOpen(true) }}><FiTag aria-hidden="true" />編輯「{viewName}」的標籤</button>
+            </section>
+            <section className="sheet-account">
+              <p><strong>{user?.displayName || '管理者'}</strong><small>{user?.email}</small></p>
+              <button type="button" onClick={() => { setMobileSettingsOpen(false); logout() }}>登出</button>
+            </section>
+          </aside>
+        </>
       )}
-
-      <nav className="mobile-bottom-nav" aria-label="手機版主要功能">
-        <button className={mobileView === 'library' ? 'active' : ''} type="button" onClick={() => { setMobileView('library'); setMobileSettingsOpen(false) }}><FiMusic /><span>音樂庫</span></button>
-        <button className={mobileView === 'favorites' ? 'active' : ''} type="button" onClick={() => { setMobileView('favorites'); setMobileSettingsOpen(false) }}><FiHeart /><span>我的最愛</span></button>
-        <button type="button" onClick={activeCategory === '作品' ? openWorkAdd : openAdd}><FiPlusCircle /><span>{activeCategory === '作品' ? '新增作品' : '貼上音樂'}</span></button>
-        <button className={mobileSettingsOpen ? 'active' : ''} type="button" onClick={() => setMobileSettingsOpen((open) => !open)}><FiSettings /><span>設定</span></button>
-      </nav>
     </div>
   )
 }

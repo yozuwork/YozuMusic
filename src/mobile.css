@@ -1,0 +1,183 @@
+/* ===== YozuMusic mobile redesign v1.0 ===== */
+.fav-pill,.mobile-settings-trigger,.mobile-sheet-backdrop{display:none}
+
+@media (width<=640px){
+  :root{--nav-h:64px;--safe-b:env(safe-area-inset-bottom,0px)}
+  .app{padding-bottom:calc(var(--nav-h) + 24px + var(--safe-b))}
+  .app.has-player{padding-bottom:calc(var(--nav-h) + 96px + var(--safe-b))}
+  .app:has(.bulk-edit-toolbar){padding-bottom:calc(var(--nav-h) + 150px + var(--safe-b))}
+
+  /* --- Top bar: logo · search · settings, always reachable --- */
+  .site-header{position:sticky;top:0;z-index:30;flex-wrap:nowrap;align-items:center;gap:8px;min-height:0;padding:10px 12px;
+    background:#f2eee5f5;-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom:1.5px solid var(--ink)}
+  .brand{order:0;width:auto;gap:0;flex:none}
+  .brand-name{display:none}
+  .brand-mark,.brand-mark.account-trigger{width:42px;height:42px}
+  .brand-mark svg{width:23px;height:23px}
+  .header-search{order:1;flex:1 1 auto;width:auto;min-width:0;min-height:44px;padding:0 12px;border-radius:12px;gap:8px}
+  .header-search>svg{width:19px;height:19px;flex:none}
+  .header-search input{font-size:16px;min-width:0}
+  .mobile-settings-trigger{order:2;display:grid;place-items:center;flex:none;width:44px;height:44px;border:1.5px solid var(--ink);
+    border-radius:12px 10px 13px 11px;background:var(--card);color:var(--ink);cursor:pointer;padding:0}
+  .mobile-settings-trigger svg{width:21px;height:21px}
+  .mobile-settings-trigger:active{background:var(--accent-soft)}
+
+  /* --- Primary sections live in the thumb zone --- */
+  .category-tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;order:9;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+    width:100%;max-width:100vw;margin:0;padding:6px 4px calc(6px + var(--safe-b));overflow:visible;touch-action:auto;
+    background:#fffdf8f7;border:0;border-top:1.5px solid var(--ink);border-radius:0}
+  .category-tab,.category-tab:hover{flex-direction:column;justify-content:center;gap:3px;min-width:0;min-height:52px;padding:4px 2px;
+    border:0;border-radius:0;background:0 0;color:#5f5c56;font-size:11px;font-weight:700;box-shadow:none}
+  .category-tab>svg{display:block;width:20px;height:20px;padding:4px 14px;box-sizing:content-box;border:1.5px solid transparent;border-radius:14px 12px 15px 11px;flex:none}
+  .category-tab>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.1}
+  .category-tab small{display:none}
+  .category-tab.active,.category-tab.active:hover{background:0 0;color:var(--ink);font-weight:900;box-shadow:none;border-radius:0}
+  .category-tab.active>svg{background:var(--accent);border-color:var(--ink)}
+  .theme-pink .category-tab.active>svg{color:#fff8f5}
+
+  /* --- Filters: favorites + moods in one swipeable row --- */
+  .filter-row{grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:0 6px;padding:10px 12px 4px;border:0}
+  .tag-filter{order:0;grid-column:1/-1;gap:7px;padding:2px 0 10px;border-bottom:1px dashed var(--line)}
+  .tag-pill{min-height:36px;padding:0 14px;font-size:13px;display:inline-flex;align-items:center;gap:5px;background:var(--card)}
+  .tag-pill.active{background:var(--ink);color:#fff}
+  .fav-pill{display:inline-flex;margin-right:6px;position:relative}
+  .fav-pill:after{content:"";position:absolute;right:-8px;top:8px;bottom:8px;border-right:1px solid var(--line)}
+  .fav-pill svg{width:15px;height:15px}
+  .fav-pill.active{background:var(--accent);color:var(--ink)}
+  .theme-pink .fav-pill.active{color:#fff8f5}
+  .fav-pill.active svg{fill:currentColor}
+  .mobile-result-count{order:1;padding:0;font-size:14px;align-self:center}
+  .sort-control{order:2;min-height:40px;padding:0 4px}
+  .sort-control select{font-size:14px}
+  .filter-row>.edit-tags-button{order:3;display:flex;min-height:34px;padding:0 12px;border:1.5px solid var(--ink);border-radius:999px;
+    background:var(--card);color:var(--ink);font-size:0;gap:0;box-shadow:none}
+  .filter-row>.edit-tags-button svg{display:none}
+  .filter-row>.edit-tags-button:after{content:"選取";font-size:13px;font-weight:900}
+  .filter-row>.edit-tags-button.active{background:var(--ink);color:#fff}
+  .filter-row>.edit-tags-button.active:after{content:"完成"}
+
+  /* --- Batch toolbar docks above the nav --- */
+  .bulk-edit-toolbar{position:fixed;left:10px;right:10px;width:auto;border-top:1.5px solid var(--ink);bottom:calc(var(--nav-h) + 12px + var(--safe-b));z-index:41;margin:0;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:12px;background:var(--card);
+    border:1.5px solid var(--ink);border-radius:14px 12px 15px 13px;box-shadow:4px 5px 0 #17171333}
+  .bulk-edit-toolbar strong{grid-column:1/-1;margin:0 0 2px;font-size:13px}
+  .bulk-edit-toolbar button{min-height:42px;font-size:12px;justify-content:center;padding:0 4px}
+  .bulk-edit-toolbar .bulk-done-button{display:none!important}
+  .app:has(.bulk-edit-toolbar) .mobile-add{display:none}
+
+  /* --- Song list (清單): a tracklist, full titles, one tap = play --- */
+  .library-section{padding:8px 12px 24px}
+  .song-grid.view-small{display:block;background:var(--card);border:1.5px solid var(--ink);border-radius:14px 12px 15px 13px;overflow:hidden;box-shadow:4px 5px 0 #1717131f}
+  .song-grid.view-small .song-card{display:grid;grid-template-columns:84px minmax(0,1fr);gap:14px;align-items:center;min-height:104px;
+    padding:10px 88px 10px 10px;border:0;border-radius:0;box-shadow:none;background:0 0;overflow:visible}
+  .song-grid.view-small .song-card+.song-card{border-top:1px dashed var(--line)}
+  .song-grid.view-small .song-card:active{background:#eee9de}
+  .song-grid.view-small .cover-button{width:84px;height:84px;aspect-ratio:auto;border:1.5px solid var(--ink);border-radius:10px 8px 11px 9px}
+  .song-grid.view-small .cover-button img{width:100%;height:100%;object-fit:cover}
+  .song-grid.view-small .cover-placeholder span{font-size:32px}
+  .song-grid.view-small .cover-placeholder i{width:84px;height:84px;border-width:14px}
+  .song-grid.view-small .song-card-body{min-height:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .song-grid.view-small .song-title-row{display:block}
+  .song-grid.view-small .song-title-row h2{font-size:15px;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;word-break:break-word}
+  .song-grid.view-small .song-title-row p{display:none}
+  .song-grid.view-small .song-tags{margin:0;min-height:0;flex-wrap:nowrap;overflow:hidden;gap:4px}
+  .song-grid.view-small .song-tags span{flex:none;font-size:11px;padding:2px 6px;border-radius:4px}
+  .song-grid.view-small .song-tags span:nth-child(n+3){display:inline}
+  .song-grid.view-small .song-tags:empty{display:none}
+  .song-grid.view-small .song-work-link{display:none}
+  .song-grid.view-small .heart-button{top:50%;right:46px;transform:translateY(-50%);width:40px;height:40px;font-size:22px;color:var(--muted);filter:none}
+  .song-grid.view-small .heart-button.active svg{fill:var(--accent);stroke:var(--ink);stroke-width:2px}
+  .song-grid.view-small .more-menu{top:50%;bottom:auto;right:6px;transform:translateY(-50%)}
+  .song-grid.view-small .more-menu summary{width:38px;height:38px;border:0;background:0 0}
+  .song-grid.view-small .more-menu>div{bottom:auto;top:calc(100% + 4px);width:170px;z-index:20}
+  .more-menu button,.more-menu a{font-size:14px;padding:10px 12px}
+  .song-grid.view-small .card-select{top:50%;left:35px;transform:translateY(-50%)}
+  .song-grid.view-small .song-card.selection-mode{padding-right:14px}
+  .song-grid.view-small .song-card.selection-mode.selected,.song-grid.view-small .song-card.selection-mode.selected:hover{background:var(--accent-soft);box-shadow:none}
+
+  /* 雙欄 / 大圖 keep the cover-first card, with calmer chrome */
+  .song-grid.view-large,.work-grid.view-large{grid-template-columns:1fr;gap:16px}
+  .song-grid.view-medium .song-work-link,.song-grid.view-large .song-work-link{margin-top:6px;font-size:11px;padding:4px 9px}
+  .song-grid.view-medium .more-menu summary,.song-grid.view-large .more-menu summary{border:1px solid var(--line)}
+
+  /* --- Works list (清單) --- */
+  .work-grid.view-small{display:block;background:var(--card);border:1.5px solid var(--ink);border-radius:14px 12px 15px 13px;overflow:hidden;box-shadow:4px 5px 0 #1717131f}
+  .work-grid.view-small .work-card{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center;padding:10px;border:0;border-radius:0;box-shadow:none;background:0 0}
+  .work-grid.view-small .work-card+.work-card{border-top:1px dashed var(--line)}
+  .work-grid.view-small .work-cover{border:1.5px solid var(--ink);border-radius:9px}
+  .work-grid.view-small .work-card-body{min-height:0;padding:0}
+  .work-grid.view-small .work-card-body h2{font-size:15px;margin:2px 0 4px}
+  .work-type-filter{gap:8px;min-height:0;padding:10px 12px 4px}
+  .work-type-pills button{min-height:36px;min-width:64px;font-size:13px}
+
+  /* --- Add button: one obvious place --- */
+  .mobile-add{display:grid;place-items:center;position:fixed;right:16px;bottom:calc(var(--nav-h) + 16px + var(--safe-b));z-index:39;
+    width:58px;height:58px;padding:0;border:2px solid var(--ink);border-radius:50% 46% 48% 52%;background:var(--accent);color:var(--ink);
+    box-shadow:3px 4px 0 var(--ink);cursor:pointer}
+  .theme-pink .mobile-add{color:#fff8f5}
+  .mobile-add svg{width:26px;height:26px}
+  .mobile-add:active{transform:translate(2px,3px);box-shadow:1px 1px 0 var(--ink)}
+  .has-player .mobile-add{bottom:calc(var(--nav-h) + 88px + var(--safe-b))}
+  .mobile-bottom-nav{display:none!important}
+
+  .now-playing{left:10px;right:10px;bottom:calc(var(--nav-h) + 12px + var(--safe-b))}
+  .pagination{margin-top:20px}
+  .pagination button{width:44px;height:44px}
+
+  /* --- Settings as a bottom sheet --- */
+  .mobile-sheet-backdrop{display:block;position:fixed;inset:0;z-index:58;background:#17171359;animation:.16s ease-out fade-in}
+  .mobile-settings-panel{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:59;display:grid;gap:18px;width:100%;max-width:100vw;max-height:88dvh;overflow-y:auto;
+    padding:10px 18px calc(20px + var(--safe-b));background:var(--card);border:0;border-top:2px solid var(--ink);border-radius:20px 20px 0 0;box-shadow:none;
+    animation:.2s ease-out sheet-up}
+  .mobile-settings-panel:before{content:"";justify-self:center;width:40px;height:4px;border-radius:4px;background:#17171340}
+  .mobile-settings-panel>header{display:flex;align-items:center;justify-content:space-between;margin-top:-6px}
+  .mobile-settings-panel>header strong{font-size:18px}
+  .mobile-settings-panel>header button{width:40px;height:40px;margin-right:-8px}
+  .sheet-group{display:grid;gap:8px}
+  .sheet-group h3{margin:0;font-size:13px;font-weight:900;color:var(--muted)}
+  .sheet-segmented{display:grid;grid-auto-columns:minmax(0,1fr);grid-auto-flow:column;gap:4px;padding:4px;border:1.5px solid var(--ink);border-radius:12px;background:#f2eee5}
+  .sheet-segmented button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;border:0;border-radius:9px;background:0 0;color:var(--ink);font-size:14px;font-weight:700;cursor:pointer}
+  .sheet-segmented button.selected{background:var(--card);box-shadow:0 0 0 1.5px var(--ink),2px 2px 0 var(--ink);font-weight:900}
+  .sheet-segmented .swatch{width:14px;height:14px;border:1px solid var(--ink);border-radius:50%}
+  .sheet-segmented .swatch.green{background:#d7ef62}
+  .sheet-segmented .swatch.pink{background:#c94f70}
+  .sheet-actions{display:grid;gap:8px}
+  .sheet-actions button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border:1.5px solid var(--ink);border-radius:11px 9px 12px 10px;background:var(--card);color:var(--ink);font-size:15px;font-weight:900;cursor:pointer}
+  .sheet-actions button:first-child{background:var(--accent)}
+  .theme-pink .sheet-actions button:first-child{color:#fff8f5}
+  .sheet-account{display:flex;align-items:center;gap:12px;padding-top:14px;border-top:1px dashed var(--line)}
+  .sheet-account p{display:grid;flex:1;min-width:0;margin:0}
+  .sheet-account strong{font-size:14px}
+  .sheet-account small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sheet-account button{flex:none;min-height:40px;padding:0 16px;border:1px solid var(--line);border-radius:9px;background:0 0;color:#9d3028;font-weight:900;cursor:pointer}
+
+  .modal-backdrop{z-index:60}
+}
+@media (width<=380px){
+  .site-header{padding-inline:10px}
+  .brand-mark,.brand-mark.account-trigger{width:40px;height:40px}
+  .category-tab>svg{padding:4px 10px}
+  .category-tab{font-size:10px}
+  .song-grid.view-small .song-card{grid-template-columns:72px minmax(0,1fr);gap:12px;padding-right:84px}
+  .song-grid.view-small .cover-button{width:72px;height:72px}
+  .song-grid.view-small .cover-placeholder i{width:72px;height:72px}
+  .song-grid.view-small .card-select{left:29px}
+}
+@keyframes sheet-up{from{transform:translateY(100%)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.mobile-settings-panel,.mobile-sheet-backdrop{animation:none}}
+@media (width<=640px){.app:has(.work-page) .mobile-add{display:none}}
+/* v1.1: 清單／卡片快速切換 */
+.mobile-view-toggle{display:none}
+@media (width<=640px){
+  .filter-row{grid-template-columns:minmax(0,1fr) auto auto auto}
+  .filter-row>.mobile-view-toggle{order:3}
+  .filter-row>.edit-tags-button{order:4}
+  .mobile-view-toggle{display:flex;gap:2px;padding:2px;border:1.5px solid var(--ink);border-radius:999px;background:var(--card)}
+  .mobile-view-toggle button{display:grid;place-items:center;width:36px;height:30px;padding:0;border:0;border-radius:999px;background:0 0;color:var(--muted);cursor:pointer}
+  .mobile-view-toggle button svg{width:18px;height:18px}
+  .mobile-view-toggle button.selected{background:var(--ink);color:#fff}
+  .work-type-filter .mobile-view-toggle{margin-left:auto;order:5}
+}
+@media (width<=640px){
+  .song-grid.view-medium .song-title-row h2,.song-grid.view-large .song-title-row h2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;word-break:break-word}
+}
