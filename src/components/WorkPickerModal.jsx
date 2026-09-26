@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FiCheck, FiChevronLeft, FiChevronRight, FiSearch, FiTrash2, FiX } from 'react-icons/fi'
+import { FiCheck, FiChevronLeft, FiChevronRight, FiPlus, FiSearch, FiTrash2, FiX } from 'react-icons/fi'
 
-const TYPE_FILTERS = ['全部', '動漫', '遊戲']
+const WORK_TYPES = ['動漫', '遊戲']
+const TYPE_FILTERS = ['全部', ...WORK_TYPES]
 const PAGE_SIZE = 10
 
-export default function WorkPickerModal({ open, works = [], selectedWorkId, onClose, onApply }) {
+export default function WorkPickerModal({ open, works = [], selectedWorkId, onClose, onApply, onCreateWork }) {
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('全部')
   const [pickedId, setPickedId] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [creating, setCreating] = useState(false)
+  const [draft, setDraft] = useState({ title: '', type: '動漫', coverUrl: '' })
+  const [createStatus, setCreateStatus] = useState({ saving: false, error: '' })
+  // 剛建立的作品可能還沒同步回 works，先記在這裡讓套用時拿得到名稱
+  const [createdWork, setCreatedWork] = useState(null)
 
   useEffect(() => {
     if (!open) return
@@ -16,14 +22,21 @@ export default function WorkPickerModal({ open, works = [], selectedWorkId, onCl
     setTypeFilter('全部')
     setPickedId(selectedWorkId || '')
     setCurrentPage(1)
+    setCreating(false)
+    setCreateStatus({ saving: false, error: '' })
+    setCreatedWork(null)
   }, [open, selectedWorkId])
 
   useEffect(() => {
     if (!open) return undefined
-    const handleKeyDown = (event) => event.key === 'Escape' && onClose()
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      if (creating) setCreating(false)
+      else onClose()
+    }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
+  }, [open, onClose, creating])
 
   const filteredWorks = useMemo(() => {
     const keyword = query.trim().toLowerCase()
@@ -49,9 +62,38 @@ export default function WorkPickerModal({ open, works = [], selectedWorkId, onCl
   if (!open) return null
 
   function apply() {
-    const matchedWork = works.find((work) => work.id === pickedId)
+    const matchedWork = works.find((work) => work.id === pickedId) || (createdWork?.id === pickedId ? createdWork : null)
     onApply(pickedId, matchedWork?.title || '')
     onClose()
+  }
+
+  function startCreate() {
+    setDraft({ title: query.trim(), type: WORK_TYPES.includes(typeFilter) ? typeFilter : '動漫', coverUrl: '' })
+    setCreateStatus({ saving: false, error: '' })
+    setCreating(true)
+  }
+
+  async function submitCreate(event) {
+    event.preventDefault()
+    const title = draft.title.trim()
+    if (!title) {
+      setCreateStatus({ saving: false, error: '請輸入作品名稱。' })
+      return
+    }
+    setCreateStatus({ saving: true, error: '' })
+    try {
+      const work = await onCreateWork({ title, type: draft.type, coverUrl: draft.coverUrl.trim() })
+      setCreatedWork(work)
+      setPickedId(work.id)
+      setQuery('')
+      setTypeFilter('全部')
+      setCurrentPage(1)
+      setCreating(false)
+      setCreateStatus({ saving: false, error: '' })
+    } catch (error) {
+      console.error('[YozuMusic][WorkPicker] 建立作品失敗', error)
+      setCreateStatus({ saving: false, error: '目前無法建立作品，請稍後再試。' })
+    }
   }
 
   function clearSelection() {
@@ -90,7 +132,49 @@ export default function WorkPickerModal({ open, works = [], selectedWorkId, onCl
             </button>
           ))}
           <span className="work-picker-count">共 {filteredWorks.length} 部作品</span>
+          {onCreateWork && !creating && (
+            <button type="button" className="work-picker-new" onClick={startCreate}><FiPlus aria-hidden="true" /> 新增作品</button>
+          )}
         </div>
+
+        {creating && (
+          <form className="work-picker-create" onSubmit={submitCreate}>
+            <strong>新增作品</strong>
+            <input
+              type="text"
+              value={draft.title}
+              placeholder="作品名稱"
+              aria-label="作品名稱"
+              autoFocus
+              onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+            />
+            <div className="work-picker-create-types" role="group" aria-label="作品類型">
+              {WORK_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={draft.type === type ? 'choice-chip selected' : 'choice-chip'}
+                  aria-pressed={draft.type === type}
+                  onClick={() => setDraft((current) => ({ ...current, type }))}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+            <input
+              type="url"
+              value={draft.coverUrl}
+              placeholder="封面圖片網址（選填，之後也能在作品頁上傳）"
+              aria-label="封面圖片網址"
+              onChange={(event) => setDraft((current) => ({ ...current, coverUrl: event.target.value }))}
+            />
+            {createStatus.error && <p className="form-error" role="alert">{createStatus.error}</p>}
+            <div className="work-picker-create-actions">
+              <button type="button" className="cancel-button" onClick={() => setCreating(false)}>取消</button>
+              <button type="submit" className="save-button" disabled={createStatus.saving}>{createStatus.saving ? '建立中…' : '建立並選取'}</button>
+            </div>
+          </form>
+        )}
 
         <div className="work-picker-list" role="radiogroup" aria-label="作品清單">
           {displayedWorks.length ? displayedWorks.map((work) => (
@@ -111,7 +195,7 @@ export default function WorkPickerModal({ open, works = [], selectedWorkId, onCl
               </span>
             </label>
           )) : (
-            <p className="work-picker-empty">找不到符合的作品，請先在「作品」區建立。</p>
+            <p className="work-picker-empty">{onCreateWork ? '找不到符合的作品，可以按「新增作品」直接建立。' : '找不到符合的作品，請先在「作品」區建立。'}</p>
           )}
         </div>
 

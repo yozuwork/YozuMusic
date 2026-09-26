@@ -1,6 +1,9 @@
-export const SONG_CATEGORIES = ['BGM', 'MUSIC', '作業用']
+export const SONG_CATEGORIES = ['BGM', 'MUSIC', '作業用', '主題曲']
 export const MAIN_CATEGORIES = [...SONG_CATEGORIES, '作品']
 export const MOOD_TAGS = ['CHILL', '戰鬥', '青春', '熱血', '懷舊', '療癒', '夜晚', '專注']
+export const THEME_SONG_TAGS = ['OP', 'ED', 'ACGN', '電影', '電視劇']
+// 各分類的預設標籤，沒有另外設定的分類就用 MOOD_TAGS
+export const DEFAULT_SECTION_TAGS = { 主題曲: THEME_SONG_TAGS }
 
 export const INITIAL_SONGS = [
   {

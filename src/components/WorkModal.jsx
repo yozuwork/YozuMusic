@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FiCheck, FiChevronLeft, FiChevronRight, FiClipboard, FiEdit3, FiImage, FiMaximize, FiMove, FiPlus, FiX } from 'react-icons/fi'
+import { FiCheck, FiChevronLeft, FiChevronRight, FiClipboard, FiEdit3, FiImage, FiMaximize, FiMove, FiPlus, FiTrash2, FiX } from 'react-icons/fi'
 import { compressCoverImage } from '../utils/compressCoverImage.js'
 import { fetchWorkSongsCount, fetchWorkSongsPage } from '../lib/firestore/songsApi.js'
 import SongCard from './SongCard.jsx'
@@ -16,6 +16,7 @@ export default function WorkModal({
   tags = [],
   onClose,
   onSave,
+  onDelete,
   onEditSong,
   onDeleteSong,
   onPlaySong,
@@ -317,7 +318,7 @@ export default function WorkModal({
           <div className="form-field full-width"><label htmlFor="work-title">作品名稱 <span>*</span></label><input id="work-title" value={form.title} placeholder="例如：我心裡危險的東西" autoFocus onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} /></div>
           <fieldset className="toggle-fieldset"><legend>作品類型 <span>*</span></legend><div>{['動漫', '遊戲'].map((type) => <button className={form.type === type ? 'choice-chip selected' : 'choice-chip'} type="button" key={type} onClick={() => setForm((current) => ({ ...current, type }))}>{form.type === type && <FiCheck />} {type}</button>)}</div></fieldset>
           {error && <p className="form-error" role="alert">{error}</p>}
-          <div className="modal-actions"><button className="cancel-button" type="button" onClick={resetAndClose}>取消</button><button className="save-button" type="submit" disabled={isProcessingCover}>{isProcessingCover ? '處理圖片中…' : work ? '儲存變更' : '建立作品'} <FiCheck /></button></div>
+          <div className="modal-actions">{work && onDelete && <button className="work-delete-action" type="button" onClick={onDelete}><FiTrash2 aria-hidden="true" /> 刪除作品</button>}<button className="cancel-button" type="button" onClick={resetAndClose}>取消</button><button className="save-button" type="submit" disabled={isProcessingCover}>{isProcessingCover ? '處理圖片中…' : work ? '儲存變更' : '建立作品'} <FiCheck /></button></div>
         </form>
 
         <section className="work-music-section" aria-label="關聯音樂">

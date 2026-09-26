@@ -46,7 +46,7 @@ function ToggleGroup({ label, options, values, onChange, required }) {
   )
 }
 
-export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS, onClose, onSave }) {
+export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS, defaults, onClose, onSave, onCreateWork }) {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [metadataStatus, setMetadataStatus] = useState('idle')
@@ -79,7 +79,11 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
       note: song.note,
       workId: song.workId || '',
       workTitle: song.workTitle || works.find((work) => work.id === song.workId)?.title || '',
-    } : emptyForm)
+    } : {
+      ...emptyForm,
+      categories: defaults?.categories || [],
+      tags: defaults?.tags || [],
+    })
     setError('')
     setMetadataStatus('idle')
     setIsWorkPickerOpen(false)
@@ -320,7 +324,7 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
               <span>{form.workTitle || '選擇作品'}</span>
               <FiChevronDown aria-hidden="true" />
             </button>
-            <small>請先在「作品」區建立作品，再將歌曲關聯到對應作品。</small>
+            <small>找不到作品時，可以在選擇視窗裡直接新增。</small>
           </div>
           <div className="form-field full-width">
             <label htmlFor="song-cover">自訂封面網址</label>
@@ -349,6 +353,7 @@ export default function SongModal({ open, song, works = [], moodTags = MOOD_TAGS
       selectedWorkId={form.workId}
       onClose={() => setIsWorkPickerOpen(false)}
       onApply={(workId, workTitle) => setForm((current) => ({ ...current, workId, workTitle }))}
+      onCreateWork={onCreateWork}
     />
     </>
   )

@@ -1,4 +1,4 @@
-export const categoryPaths = { all: '', BGM: 'bgm', MUSIC: 'music', 作業用: 'Productivity', 作品: 'works' }
+export const categoryPaths = { all: '', BGM: 'bgm', MUSIC: 'music', 作業用: 'Productivity', 主題曲: 'theme-songs', 作品: 'works' }
 
 export function categoryUrl(category, base = import.meta.env.BASE_URL) {
   return `${base}${categoryPaths[category] ?? ''}`

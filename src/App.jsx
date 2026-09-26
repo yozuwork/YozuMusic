@@ -11,7 +11,7 @@ import TagEditor from './components/TagEditor.jsx'
 import TagFilters from './components/TagFilters.jsx'
 import WorkCard from './components/WorkCard.jsx'
 import WorkModal from './components/WorkModal.jsx'
-import { MAIN_CATEGORIES } from './data/initialSongs.js'
+import { MAIN_CATEGORIES, SONG_CATEGORIES } from './data/initialSongs.js'
 import useFirebaseAuth, { OWNER_UID } from './hooks/useFirebaseAuth.js'
 import useSongLibrary from './hooks/useSongLibrary.js'
 import useTagLibrary from './hooks/useTagLibrary.js'
@@ -29,7 +29,7 @@ function App() {
   const isOwner = user?.uid === OWNER_UID
   const { songs, addSong, updateSong, deleteSong, remoteFirestore } = useSongLibrary(isOwner)
   const { tagsBySection, setSectionTags } = useTagLibrary(isOwner)
-  const { works, addWork, updateWork } = useWorkLibrary(isOwner)
+  const { works, addWork, updateWork, deleteWork, findWorkByTitle } = useWorkLibrary(isOwner)
   const [route, setRoute] = useState(() => readRoute(window.location.pathname))
   const activeCategory = route.category
   const routeWork = works.find((work) => work.id === route.workId)
@@ -69,6 +69,7 @@ function App() {
   const [editingWork, setEditingWork] = useState(null)
   const [tagEditorOpen, setTagEditorOpen] = useState(false)
   const [editingSong, setEditingSong] = useState(null)
+  const [songDefaults, setSongDefaults] = useState(null)
   const [nowPlaying, setNowPlaying] = useState(null)
   const [actionModal, setActionModal] = useState(null)
   const [editMode, setEditMode] = useState(false)
@@ -231,6 +232,11 @@ function App() {
 
   function openAdd() {
     setEditingSong(null)
+    // 新增時自動帶入目前所在的分類與選中的標籤
+    setSongDefaults({
+      categories: SONG_CATEGORIES.includes(activeCategory) ? [activeCategory] : [],
+      tags: activeTag ? [activeTag] : [],
+    })
     setModalOpen(true)
   }
 
@@ -248,7 +254,8 @@ function App() {
     const wasEditing = Boolean(editingSong)
     try {
       let linkedWork = works.find((work) => work.id === song.workId)
-        || works.find((work) => work.title.localeCompare(song.workTitle, 'zh-Hant', { sensitivity: 'accent' }) === 0)
+        || (song.workId && song.workTitle ? { id: song.workId, title: song.workTitle } : null)
+        || (song.workTitle ? findWorkByTitle(song.workTitle) : null)
       if (song.workTitle && !linkedWork) {
         linkedWork = await addWork({ title: song.workTitle, coverUrl: song.coverUrl || '' })
       }
@@ -288,6 +295,11 @@ function App() {
     try {
       let savedWork
       const currentWork = workModalOpen ? editingWork : routeWork
+      const duplicate = findWorkByTitle(work.title, currentWork?.id)
+      if (duplicate) {
+        setActionModal({ mode: 'error', title: '作品名稱重複', message: `已經有名為「${duplicate.title}」的作品，請換一個名稱。` })
+        return
+      }
       if (currentWork) {
         await updateWork(currentWork.id, work)
         const linkedSongs = remoteFirestore
@@ -305,6 +317,35 @@ function App() {
     } catch {
       setActionModal({ mode: 'error', title: '作品儲存失敗', message: '目前無法儲存這個作品，請稍後再試。' })
     }
+  }
+
+  function removeWork(work) {
+    const linkedCount = typeof work.songCount === 'number'
+      ? work.songCount
+      : songs.filter((song) => song.workId === work.id || (!song.workId && song.workTitle === work.title)).length
+    setActionModal({
+      mode: 'confirm',
+      title: `刪除「${work.title}」？`,
+      message: linkedCount
+        ? `關聯的 ${linkedCount} 首音樂會保留，只是取消與這個作品的關聯。刪除後無法復原。`
+        : '這個作品沒有關聯音樂。刪除後無法復原。',
+      confirmText: '刪除作品',
+      onConfirm: async () => {
+        try {
+          const linkedSongs = remoteFirestore
+            ? await fetchSongsByWorkId(work.id)
+            : songs.filter((song) => song.workId === work.id || (!song.workId && song.workTitle === work.title))
+          await Promise.all(linkedSongs.map((song) => updateSong(song.id, { workId: '', workTitle: '' })))
+          await deleteWork(work.id)
+          if (highlightedWorkId === work.id) setHighlightedWorkId('')
+          if (route.workId === work.id) setActiveCategory('作品')
+          setActionModal({ mode: 'success', title: '作品已刪除', message: `「${work.title}」已從作品區移除。` })
+        } catch (error) {
+          console.error('[YozuMusic][Delete] 刪除作品失敗', error)
+          setActionModal({ mode: 'error', title: '刪除失敗', message: '目前無法刪除這個作品，請稍後再試。' })
+        }
+      },
+    })
   }
 
   function removeWorkSongs(songIds, onComplete) {
@@ -473,6 +514,7 @@ function App() {
             tags={currentTags}
             onClose={() => setActiveCategory('作品')}
             onSave={saveWork}
+            onDelete={() => removeWork(routeWork)}
             onEditSong={openEdit}
             onDeleteSong={removeSong}
             onPlaySong={playSong}
@@ -608,7 +650,7 @@ function App() {
 
       <footer className="site-footer"><FiDisc /> YOZU MUSIC LIBRARY <span>— 收好每一段想再聽見的聲音</span></footer>
       <button className="mobile-add" type="button" aria-label={activeCategory === '作品' ? '新增作品' : '新增音樂'} onClick={activeCategory === '作品' ? openWorkAdd : openAdd}><FiPlus /></button>
-      <SongModal open={modalOpen} song={editingSong} works={works} moodTags={currentTags} onClose={closeModal} onSave={saveSong} />
+      <SongModal open={modalOpen} song={editingSong} works={works} moodTags={currentTags} defaults={songDefaults} onClose={closeModal} onSave={saveSong} onCreateWork={addWork} />
       <WorkModal
         open={workModalOpen}
         work={editingWork}

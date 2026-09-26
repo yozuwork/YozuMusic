@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { INITIAL_SONGS } from '../data/initialSongs.js'
 import { USE_FIRESTORE, firebaseReady } from '../lib/firebase.js'
-import { addWork as addWorkFirestore, subscribeWorks, updateWork as updateWorkFirestore } from '../lib/firestore/worksApi.js'
-import { rtdbGet, rtdbSet, rtdbUpdate } from '../lib/realtimeDbRest.js'
+import { addWork as addWorkFirestore, deleteWork as deleteWorkFirestore, subscribeWorks, updateWork as updateWorkFirestore } from '../lib/firestore/worksApi.js'
+import { rtdbDelete, rtdbGet, rtdbSet, rtdbUpdate } from '../lib/realtimeDbRest.js'
 
 const STORAGE_KEY = 'yozu-music-works-v1'
 const DATABASE_PATH = 'yozuMusic/works'
+
+export function isSameWorkTitle(a = '', b = '') {
+  return a.trim().localeCompare(b.trim(), 'zh-Hant', { sensitivity: 'accent' }) === 0
+}
 
 function normalizeWork(work, fallbackId = '') {
   if (!work || typeof work !== 'object' || Array.isArray(work)) return null
@@ -58,6 +62,10 @@ function readWorks() {
 export default function useWorkLibrary(allowRemote = false) {
   const [works, setWorks] = useState(readWorks)
   const remoteFirestore = allowRemote && USE_FIRESTORE
+  // 剛建立、還沒從資料庫同步回來的作品；避免短時間內重複建立同名作品
+  const pendingWorksRef = useRef([])
+  const worksRef = useRef(works)
+  worksRef.current = works
 
   useEffect(() => {
     if (!firebaseReady || !allowRemote) return undefined
@@ -92,16 +100,26 @@ export default function useWorkLibrary(allowRemote = false) {
     })
   }
 
+  function findWorkByTitle(title, excludeId = '') {
+    return [...worksRef.current, ...pendingWorksRef.current]
+      .find((item) => item.id !== excludeId && isSameWorkTitle(item.title, title))
+  }
+
   async function addWork(work) {
-    const existing = works.find((item) => item.title.localeCompare(work.title, 'zh-Hant', { sensitivity: 'accent' }) === 0)
+    const existing = findWorkByTitle(work.title)
     if (existing) return existing
 
     const nextWork = {
       ...work,
       type: ['動漫', '遊戲'].includes(work.type) ? work.type : '動漫',
+      title: work.title.trim(),
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     }
+    pendingWorksRef.current = [...pendingWorksRef.current, nextWork]
+    setTimeout(() => {
+      pendingWorksRef.current = pendingWorksRef.current.filter((item) => item.id !== nextWork.id)
+    }, 10000)
     if (!firebaseReady || !allowRemote) {
       updateLocal((current) => [nextWork, ...current])
       return nextWork
@@ -122,5 +140,16 @@ export default function useWorkLibrary(allowRemote = false) {
     updateLocal((current) => current.map((work) => work.id === id ? { ...work, ...changes } : work))
   }
 
-  return { works, addWork, updateWork }
+  async function deleteWork(id) {
+    pendingWorksRef.current = pendingWorksRef.current.filter((item) => item.id !== id)
+    if (!firebaseReady || !allowRemote) {
+      updateLocal((current) => current.filter((work) => work.id !== id))
+      return
+    }
+    if (remoteFirestore) return deleteWorkFirestore(id)
+    await rtdbDelete(`${DATABASE_PATH}/${id}`)
+    updateLocal((current) => current.filter((work) => work.id !== id))
+  }
+
+  return { works, addWork, updateWork, deleteWork, findWorkByTitle }
 }

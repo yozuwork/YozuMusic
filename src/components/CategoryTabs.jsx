@@ -1,4 +1,4 @@
-import { FiBookOpen, FiGrid, FiHeadphones, FiMusic, FiPenTool } from 'react-icons/fi'
+import { FiBookOpen, FiGrid, FiHeadphones, FiMic, FiMusic, FiPenTool } from 'react-icons/fi'
 import { categoryUrl } from '../utils/routes.js'
 
 const icons = {
@@ -6,6 +6,7 @@ const icons = {
   BGM: FiHeadphones,
   MUSIC: FiMusic,
   作業用: FiPenTool,
+  主題曲: FiMic,
   作品: FiBookOpen,
 }
 

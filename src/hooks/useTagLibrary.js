@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { buildTagUpdates } from '../utils/tagSync.js'
-import { MAIN_CATEGORIES, MOOD_TAGS } from '../data/initialSongs.js'
+import { DEFAULT_SECTION_TAGS, MAIN_CATEGORIES, MOOD_TAGS } from '../data/initialSongs.js'
 import { USE_FIRESTORE, firebaseReady } from '../lib/firebase.js'
 import { subscribeTags, writeTagSections } from '../lib/firestore/tagsApi.js'
 import { rtdbGet, rtdbSet, rtdbUpdate } from '../lib/realtimeDbRest.js'
@@ -11,7 +11,7 @@ const SECTIONS = ['all', ...MAIN_CATEGORIES]
 
 function initialTags() {
   return Object.fromEntries(
-    SECTIONS.map((section) => [section, MOOD_TAGS.map((tag) => ({ id: tag, label: tag }))]),
+    SECTIONS.map((section) => [section, (DEFAULT_SECTION_TAGS[section] || MOOD_TAGS).map((tag) => ({ id: tag, label: tag }))]),
   )
 }
 

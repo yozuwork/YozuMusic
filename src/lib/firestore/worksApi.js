@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 const WORKS_COLLECTION = 'works'
@@ -23,4 +23,8 @@ export async function addWork(work) {
 
 export async function updateWork(id, changes) {
   await updateDoc(doc(db, WORKS_COLLECTION, id), changes)
+}
+
+export async function deleteWork(id) {
+  await deleteDoc(doc(db, WORKS_COLLECTION, id))
 }
